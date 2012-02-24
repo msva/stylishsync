@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- $Id$ -->
+
+<!DOCTYPE stylishsyncopttions [ 
+<!ENTITY % stsoptionsDTD SYSTEM "chrome://stylishsync/locale/options.dtd">
+%stsoptionsDTD;
+]>
+  
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  
+  <setting pref="services.sync.engine.stylishsync" type="bool" title="&stsenabled.label;"   tooltiptext="&stsenabled.tip;"/>
+  <setting pref="extensions.stylishsync.immediate" type="bool" title="&stsimmediate.label;" tooltiptext="&stsimmediate.tip;"/>
+  <setting pref="extensions.stylishsync.debug"     type="bool" title="&stsdebug.label;"     tooltiptext="&stsdebug.tip;"/>
+</vbox>

@@ -1,0 +1,6 @@
+# manifest loading in bootstrapped addons requires Gecko >= 10.0
+
+content   stylishsync                 chrome/content/
+skin      stylishsync   classic/1.0   chrome/skin/
+locale    stylishsync   en-US         chrome/locale/en-US/
+locale    stylishsync   de-DE         chrome/locale/de-DE/
