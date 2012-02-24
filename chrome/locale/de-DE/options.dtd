@@ -1,0 +1,7 @@
+<!-- Please @change this line to match your options.xul file --> 
+<!ENTITY stsenabled.label   "Aktiviert">
+<!ENTITY stsenabled.tip     "Deaktiveren löscht die Daten auf dem Server!">
+<!ENTITY stsimmediate.label "Sofort synchronisieren">
+<!ENTITY stsimmediate.tip   "Nach jeder Style-Änderung sofort synchronisieren">
+<!ENTITY stsdebug.label     "Debug-Ausgabe auf Fehlerkonsole">
+<!ENTITY stsdebug.tip       "Die Fehlerkonsole muss in Firefox aktiviert sein">
