@@ -5,6 +5,6 @@
 <!ENTITY stsimmediate.label "Sofort synchronisieren">
 <!ENTITY stsimmediate.tip   "Nach jeder Style-Änderung sofort synchronisieren">
 <!ENTITY stsdebug.label     "Debug-Ausgabe auf Fehlerkonsole">
-<!ENTITY stsdebug.tip       "Die Fehlerkonsole muss in Firefox aktiviert sein">
+<!ENTITY stsdebug.tip       "Die Fehlerkonsole muss in Firefox aktiviert sein (erfordert Neustart)">
 <!ENTITY stsreset.label     "&stylishsync; verwalten">
 <!ENTITY stsresetbtn.label  "Zurücksetzen...">

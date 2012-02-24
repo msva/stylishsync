@@ -72,7 +72,8 @@ var StylishSync = {
       trackerInstance.observe(null, "weave:engine:stop-tracking", null);
     if (engine)
       Weave.Engines.unregister(engine);
-    Services.obs.removeObserver(this, "addon-options-displayed");
+    try { Services.obs.removeObserver(this, "addon-options-displayed"); }
+    catch (exc) {}
     Logging.debug("shutdown: " + reason);
   },
   
@@ -91,12 +92,23 @@ var StylishSync = {
           return;
         }
 
-        Weave.Engines.register(StylishSyncEngine);
-        Logging.debug("Engine registered.");
+        if (!Weave.Service.lock()) {
+          Logging.error("Cannot lock sync service. Engine not registered.");
+          return;
+        }
+
+        try {
+
+          Weave.Engines.register(StylishSyncEngine);
+          Logging.debug("Engine registered.");
         
-        if (this.isFirstStart()) {
-          Logging.debug("First start");
-          this.promptAndSync();
+          if (this.isFirstStart()) {
+            Logging.debug("First start");
+            this.promptAndSync();
+          }
+
+        } finally {
+          Weave.Service.unlock();
         }
         break;
 
