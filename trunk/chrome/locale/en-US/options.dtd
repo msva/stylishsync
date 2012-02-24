@@ -1,7 +1,10 @@
 <!-- Please @change this line to match your options.xul file --> 
+<!ENTITY stylishsync        "Stylish Sync">
 <!ENTITY stsenabled.label   "Enabled">
 <!ENTITY stsenabled.tip     "Disabling will clear the sync data on the server!">
 <!ENTITY stsimmediate.label "Synchronize immediately">
 <!ENTITY stsimmediate.tip   "Synchronize immediately when styles change">
 <!ENTITY stsdebug.label     "Debug output to error console">
 <!ENTITY stsdebug.tip       "Error console has to be enabled in Firefox">
+<!ENTITY stsreset.label     "Manage &stylishsync;">
+<!ENTITY stsresetbtn.label  "Reset...">
