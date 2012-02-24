@@ -32,26 +32,47 @@ function assert(cond, txt)
     throw new SyncError(txt||"Assertion Error", 1);
 }
 
+function SyncStringBundle() {
+  this.load();
+}
+
+SyncStringBundle.prototype = {
+  _bundle: null,
+  load: function SSB_load() {
+    this._bundle = Services.strings.createBundle("chrome://stylishsync/locale/stylishsync.properties");
+  },
+  
+  get: function SSB_get(key) {
+    return this._bundle.GetStringFromName(key);
+  }
+};
+
 var StylishSync = {
   appStart: true,
+  stylish:  null,
+  strings:  null,
   
   startup: function STS_startup(data, reason) {
+    Services.strings.flushBundles();
+    this.strings = new SyncStringBundle();
     if (reason == 1) // app start
       Services.obs.addObserver(this, "weave:service:ready",  false);
     else {
       this.appStart = false;
       this.observe(null, "weave:service:ready", null);
     }
+    Services.obs.addObserver(this, "addon-options-displayed", false);
     Logging.debug("startup: " + reason);
   },
   
   shutdown: function STS_shutdown(data, reason) {
     let engine = Weave.Engines.get("stylishsync");
-    Logging.debug("unregistering '"+engine+"'");
+    Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
     if (trackerInstance)
       trackerInstance.observe(null, "weave:engine:stop-tracking", null);
     if (engine)
       Weave.Engines.unregister(engine);
+    Services.obs.removeObserver(this, "addon-options-displayed");
     Logging.debug("shutdown: " + reason);
   },
   
@@ -62,20 +83,92 @@ var StylishSync = {
         if (this.appStart)
           Services.obs.removeObserver(this, "weave:service:ready");
 
-        let svc = null;
-        try { svc = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle); }
+        try { this.stylish = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle); }
         catch (exc) {}
 
-        if (svc === null) {
+        if (this.stylish === null) {
           Logging.warn("Stylish doesn't seem to be installed. Exiting.");
           return;
         }
 
         Weave.Engines.register(StylishSyncEngine);
         Logging.debug("Engine registered.");
+        
+        if (this.isFirstStart()) {
+          Logging.debug("First start");
+          this.promptAndSync();
+        }
+        break;
+
+      case "addon-options-displayed":
+        if (data == "{0e3fc079-afbb-4a00-87e5-9486062d0f9c}") {
+          let self = this;
+          subject.getElementById("stsreset-button")
+                 .addEventListener("command", function STS_onResetButton() {
+                    self.promptAndSync("resetPrompt", "keepPrompt");
+                 }, false);
+        }
         break;
     }
+  },
+  
+  promptAndSync: function STS_promptAndSync(startPrompt, mergePrompt) {
+    let eng = Weave.Engines.get("stylishsync");
+    assert(!!eng, "Engine not registered");
+    
+    startPrompt = startPrompt || "firstStartPrompt";
+    mergePrompt = mergePrompt || "mergePrompt";
+    
+    let choices = [ this.strings.get(mergePrompt),
+                    this.strings.get("wipeClientPrompt"),
+                    this.strings.get("wipeServerPrompt"),
+                    this.strings.get("disablePrompt")
+                  ];
+    if (startPrompt != "firstStartPrompt")
+      choices[0] += " ("+this.strings.get("sameAsCancel")+")";
+    else
+      choices[choices.length-1] += " ("+this.strings.get("sameAsCancel")+")";
+      
+    let selected = {value: 0};
+    let ok = Services.prompt.select(null,
+                                    this.strings.get("stylishsync"),
+                                    this.strings.get(startPrompt),
+                                    choices.length, choices, selected);
+
+    if (!ok && startPrompt == "firstStartPrompt")
+      selected.value = choices.length-1; // disable engine
+    
+    eng.enabled = (selected.value != choices.length-1);
+
+    if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
+
+    switch (selected.value) {
+      case 0: Logging.debug("Merging data (waiting for sync)"); break;
+      case 1: Logging.debug("Wiping client"); eng.wipeClient(); break;
+      case 2: Logging.debug("Wiping server"); eng.wipeServer(); break;
+    }
+    if (trackerInstance)
+      trackerInstance.score += SCORE_INCREMENT_XLARGE;
+  },
+  
+  isFirstStart: function STS_isFirstStart() {
+    let data = null, conn = null, stmt = null;
+    try {
+      data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+      conn = data.getConnection();
+      stmt = conn.createStatement("select count(*) as count from style_meta where name = 'syncguid'");
+      stmt.executeStep();
+      return stmt.row.count == 0;
+    } catch (exc) {
+      Logging.logException(exc);
+      return false;
+    } finally {
+      if (stmt) { stmt.reset(); stmt.finalize(); }
+      if (conn) { conn.close(); }
+    }
+    
   }
+  
 };
 
 const STYLE_PROPS = [
@@ -217,7 +310,7 @@ StylishSyncStore.prototype = {
   wipe: function STS_wipe() {
     let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
     for (let s in styles)
-      styles[s].delete();
+      new StyleWrapper(null, styles[s]).delete();
   },
   
   create: function STS_create(rec) {
