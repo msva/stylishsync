@@ -137,7 +137,7 @@ var StylishBackup = {
           style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
                      row.name, row.code,  row.enabled,   row.originalCode); 
         }
-        if (row.meta)
+        if (row.meta && row.meta != "syncguid")
           style.addMeta(row.meta, row.mval)
       }
       if (style)
