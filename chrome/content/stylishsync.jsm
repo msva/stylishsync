@@ -12,6 +12,10 @@ Components.utils.import("resource://services-sync/constants.js");
 
 var EXPORTED_SYMBOLS = [ "StylishSync", "StylishSyncEngine", "StylishSyncRecord" ];
 
+//*****************************************************************************
+//* Helper classes and variables
+//*****************************************************************************
+
 var trackerInstance = null;
 
 function SyncStringBundle() {
@@ -28,6 +32,10 @@ SyncStringBundle.prototype = {
     return this._bundle.GetStringFromName(key);
   }
 };
+
+//*****************************************************************************
+//* Main class
+//*****************************************************************************
 
 var StylishSync = {
   data:     null,
@@ -147,9 +155,19 @@ var StylishSync = {
     if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
 
     switch (selected.value) {
-      case 0: Logging.debug("Merging data (waiting for sync)"); break;
-      case 1: Logging.debug("Wiping client"); eng.wipeClient(); break;
-      case 2: Logging.debug("Wiping server"); eng.wipeServer(); break;
+      case 0:
+        Logging.debug("Merging data (waiting for sync)");
+        break;
+      case 1:
+        Logging.debug("Wiping client");
+        Weave.Service.wipeClient([eng.name]);
+        break;
+      case 2:
+        Logging.debug("Wiping server");
+        Weave.Service.resetClient([eng.name]);
+        Weave.Service.wipeServer([eng.name]);
+        Weave.Clients.sendCommand("wipeEngine", [eng.name]);
+        break;
     }
     if (trackerInstance)
       trackerInstance.score += SCORE_INCREMENT_XLARGE;
@@ -184,7 +202,7 @@ var StylishSync = {
            Services.prompt.alert(self.window, name, self.strings.get("restoreError"));
          self.window = null;
       }, false);
-    } else {
+    } else { // engine not (yet) registered
       [ "stsenabled-set", "stsimmediate-set", "stsmanage-set", "stsautobak-set",
         "stsreset-btn",   "stsbackup-btn",    "stsrestore-btn" ].forEach(function(id){
         doc.getElementById(id).setAttribute("disabled", "true");
@@ -226,6 +244,10 @@ var StylishSync = {
   
 };
 
+//*****************************************************************************
+//* Custom Sync Engine classes
+//*****************************************************************************
+
 const STYLE_PROPS = [
   "url",  "idUrl",   "updateUrl", "md5Url", "name",
   "code", "enabled", "originalCode"
@@ -233,6 +255,12 @@ const STYLE_PROPS = [
 
 const STYLE_META = [ "url", "url-prefix", "domain", "regexp", "type", "tag" ];
 const STYLISH_MODE_SYNCING = 1024;
+
+function dbgFmt(obj) {
+  if (!Logging.DEBUG) return "";
+  let snip = function(key, value) { return (key == "code") ? value.substring(0, 256) : value; }
+  return JSON.stringify(obj, snip);
+}
 
 function StyleWrapper(guid, styleobj) {
   this.svc   = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
@@ -332,7 +360,7 @@ StylishSyncStore.prototype = {
   createRecord: function STS_createRecord(id, coll) {
     let rec  = new StylishSyncRecord(coll, id);
     let wrap = new StyleWrapper(id);
-    Logging.debug("createRecord: "+id+", "+coll+", "+JSON.stringify(wrap));
+    Logging.debug("createRecord: "+id+", "+coll+", "+dbgFmt(wrap));
     // I've got this from engines/passwords.js:
     if (wrap.id == 0) {
       rec.deleted = true;
@@ -381,7 +409,7 @@ StylishSyncStore.prototype = {
   },
   
   update: function STS_update(rec) {
-    Logging.debug("update: "+JSON.stringify(rec.cleartext));
+    Logging.debug("update: "+dbgFmt(rec.cleartext));
     let wrap = new StyleWrapper(rec.id);
     wrap.fromRecord(rec);
     if (wrap.style.name != null)
@@ -391,7 +419,7 @@ StylishSyncStore.prototype = {
   },
   
   remove: function STS_remove(rec) {
-    Logging.debug("remove: "+JSON.stringify(rec));
+    Logging.debug("remove: "+dbgFmt(rec));
     let wrap = new StyleWrapper(rec.id);
     if (wrap.style.id != 0)
       wrap.delete();
@@ -461,7 +489,7 @@ StylishSyncEngine.prototype = {
   _trackerObj: StylishSyncTracker,
 
   _findDupe: function STS_findDupe(rec) {
-    Logging.debug("_findDupe: "+JSON.stringify(rec.cleartext));
+    Logging.debug("_findDupe: "+dbgFmt(rec.cleartext));
     let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
     for (let s in styles) {
       let wrap = new StyleWrapper(null, styles[s]);
