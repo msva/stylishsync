@@ -186,7 +186,7 @@ var StylishBackup = {
     let picker = Components.classes["@mozilla.org/filepicker;1"].createInstance(FP);
 
     picker.init(sts.window, name+" - "+title, restore ? FP.modeOpen : FP.modeSave);
-    picker.appendFilter(name, "stylishsync*.sqlite");
+    picker.appendFilter(name, "stylish" + (restore ? "": "sync") + "*.sqlite");
     picker.appendFilters(FP.filterAll);
 
     picker.displayDirectory = gDownloadLastDir.getFile("chrome://stylishsync");
