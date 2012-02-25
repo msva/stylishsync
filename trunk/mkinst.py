@@ -30,6 +30,7 @@ def main(argv=sys.argv[1:]):
   op.add_option("-b", "--builddir",  default="build", help="only for SVN")
   op.add_option("-m", "--manifests", default=[], action="append")
   op.add_option("-a", "--AMO",       default=False,   help="build AMO version", action="store_true")
+  op.add_option("-l", "--latest",    default=False,   help="create *-latest-dev.xpi", action="store_true")
   
   opts, args = op.parse_args(argv);
 
@@ -125,6 +126,9 @@ def main(argv=sys.argv[1:]):
         if xpidata is not None:
           amo.writestr(item, xpidata)
       amo.close(); xpi.close()
+
+    if opts.latest:
+      shutil.copy(fname, os.path.join(outdir, "%s-latest-dev.xpi" % opts.project))
 
   finally:
     os.chdir(cwd)
