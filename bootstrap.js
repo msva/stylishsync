@@ -28,6 +28,7 @@ const DEFAULT_PREFS = {
   "extensions.stylishsync.immediate": false,
   "extensions.stylishsync.autobak":   true,
   "extensions.stylishsync.bakage":    14,
+  "extensions.stylishsync.stylish":   true,
   "services.sync.engine.stylishsync": true,
   "services.sync.prefs.sync.extensions.stylishsync.immediate": true,
   "services.sync.prefs.sync.extensions.stylishsync.autobak":   true,
