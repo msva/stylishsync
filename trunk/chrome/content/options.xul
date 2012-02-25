@@ -10,6 +10,7 @@
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  
   <setting  id="stsenabled-set"    pref="services.sync.engine.stylishsync" type="bool" title="&stsenabled.label;"   tooltiptext="&stsenabled.tip;"/>
   <setting  id="stsimmediate-set"  pref="extensions.stylishsync.immediate" type="bool" title="&stsimmediate.label;" tooltiptext="&stsimmediate.tip;"/>
+  <setting  id="stsstylish-set"    pref="extensions.stylishsync.stylish"   type="bool" title="&stsstylish.label;"   tooltiptext="&stsstylish.tip;"/>
   <setting  id="stsautobak-set"    pref="extensions.stylishsync.autobak"   type="bool" title="&stsautobak.label;"   tooltiptext="&stsautobak.tip;"/>
   <setting  id="stsmanage-set"     type="control" title="&stsmanage.label;">
     <button id="stsreset-btn"      label="&stsresetbtn.label;"/>

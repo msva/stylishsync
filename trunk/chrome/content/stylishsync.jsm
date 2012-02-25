@@ -43,8 +43,10 @@ var StylishSync = {
     if (reason == 1) Services.obs.addObserver(this, "weave:service:ready",  false);
     else             this.startEngine();
 
-    Services.obs.addObserver(this, "addon-options-displayed", false);
+    Services.obs  .addObserver(this, "addon-options-displayed", false);
+    Services.prefs.addObserver("extensions.stylishsync.stylish", this, false);
     Logging.debug("startup: " + reason);
+    this.handleStylishSettings();
   },
   
   shutdown: function STS_shutdown(data, reason) {
@@ -54,8 +56,9 @@ var StylishSync = {
     if (trackerInstance)  trackerInstance.stopTracking();
     if (engine)           Weave.Engines.unregister(engine);
 
-    try { Services.obs.removeObserver(this, "addon-options-displayed"); }
-    catch (exc) {}
+    try { Services.obs  .removeObserver(this, "addon-options-displayed"); } catch (exc) {}
+    try { Services.prefs.removeObserver("extensions.stylishsync.stylish", this); } catch (exc) {}
+    
     Logging.debug("shutdown: " + reason);
   },
   
@@ -71,6 +74,11 @@ var StylishSync = {
       case "addon-options-displayed":
         if (this.data && data == this.data.id)
           this.handleOptions(subject);
+        break;
+        
+      case "nsPref:changed":
+        if (data == "extensions.stylishsync.stylish")
+          this.handleStylishSettings();
         break;
     }
   },
@@ -184,6 +192,20 @@ var StylishSync = {
     }
   },  
 
+  handleStylishSettings: function STS_handleStylishSettings() {
+    const STYLISH_SETTINGS = [ 
+      "closedContainers", "editOnInstall", "editor", "install.allowedDomains",
+      "manageView", "styleRegistrationEnabled", "updatesEnabled", "wrap_lines"
+    ];
+    let sync = Services.prefs.getBoolPref("extensions.stylishsync.stylish");
+    let pfx  = "services.sync.prefs.sync.extensions.stylish.";
+
+    STYLISH_SETTINGS.forEach(function(pref) {
+      if (sync) Services.prefs.setBoolPref(pfx + pref, "true");
+      else      Services.prefs.clearUserPref(pfx + pref);
+    });
+  },
+  
   isFirstStart: function STS_isFirstStart() {
     let data = null, conn = null, stmt = null;
     try {

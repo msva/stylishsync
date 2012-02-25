@@ -12,3 +12,5 @@
 <!ENTITY stsrestorebtn.label "Restore Styles...">
 <!ENTITY stsautobak.label    "Backup automatically">
 <!ENTITY stsautobak.tip      "Backup-styles will be saved in your profile folder">
+<!ENTITY stsstylish.label    "Sync Stylish settings">
+<!ENTITY stsstylish.tip      "Some of Stylish's own settings will be synchronized">
