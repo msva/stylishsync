@@ -1,0 +1,16 @@
+#summary Stylish Sync documentation.
+
+= About =
+[http://code.google.com/p/stylishsync/ Stylish Sync] is an add-on for
+[http://www.seamonkey-project.org/ SeaMonkey] and
+[http://www.mozilla.com/firefox/ Firefox] in combination with
+the [http://userstyles.org Stylish] add-on.
+
+It uses the browsers synchronization capabilities to sync your user styles.
+
+As required by Mozilla, here's the add-on's
+
+= Privacy Policy =
+This extension uploads Stylish's user styles to the Mozilla sync server.
+
+As with all Mozilla sync data, all items are uploaded in encrypted form and can only be decrypted by the users browser.
