@@ -14,24 +14,6 @@ var EXPORTED_SYMBOLS = [ "StylishSync", "StylishSyncEngine", "StylishSyncRecord"
 
 var trackerInstance = null;
 
-function SyncError(txt, level) {
-  if (level === undefined) level = 0
-  this.message = txt;
-  this.name    = "SyncError";
-  let info = Logging.callerInfo(level+1);
-  for (let p in info)
-    this[p] = info[p];
-}
-SyncError.prototype = new Error();
-SyncError.prototype.constructor = SyncError;
-
-
-function assert(cond, txt)
-{
-  if (!cond)
-    throw new SyncError(txt||"Assertion Error", 1);
-}
-
 function SyncStringBundle() {
   this.load();
 }
@@ -48,19 +30,19 @@ SyncStringBundle.prototype = {
 };
 
 var StylishSync = {
-  appStart: true,
+  data:     null,
   stylish:  null,
   strings:  null,
-  
+  window:   null,
+
   startup: function STS_startup(data, reason) {
+    this.data = data;
     Services.strings.flushBundles();
     this.strings = new SyncStringBundle();
-    if (reason == 1) // app start
-      Services.obs.addObserver(this, "weave:service:ready",  false);
-    else {
-      this.appStart = false;
-      this.observe(null, "weave:service:ready", null);
-    }
+    
+    if (reason == 1) Services.obs.addObserver(this, "weave:service:ready",  false);
+    else             this.startEngine();
+
     Services.obs.addObserver(this, "addon-options-displayed", false);
     Logging.debug("startup: " + reason);
   },
@@ -68,10 +50,10 @@ var StylishSync = {
   shutdown: function STS_shutdown(data, reason) {
     let engine = Weave.Engines.get("stylishsync");
     Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
-    if (trackerInstance)
-      trackerInstance.observe(null, "weave:engine:stop-tracking", null);
-    if (engine)
-      Weave.Engines.unregister(engine);
+    
+    if (trackerInstance)  trackerInstance.stopTracking();
+    if (engine)           Weave.Engines.unregister(engine);
+
     try { Services.obs.removeObserver(this, "addon-options-displayed"); }
     catch (exc) {}
     Logging.debug("shutdown: " + reason);
@@ -79,51 +61,53 @@ var StylishSync = {
   
   observe: function STS_observe(subject, topic, data) {
     Logging.debug("STS_observe: " + subject + ", " + topic);
+
     switch (topic) {
       case "weave:service:ready":
-        if (this.appStart)
-          Services.obs.removeObserver(this, "weave:service:ready");
-
-        try { this.stylish = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle); }
-        catch (exc) {}
-
-        if (this.stylish === null) {
-          Logging.warn("Stylish doesn't seem to be installed. Exiting.");
-          return;
-        }
-
-        if (!Weave.Service.lock()) {
-          Logging.error("Cannot lock sync service. Engine not registered.");
-          return;
-        }
-
-        try {
-
-          Weave.Engines.register(StylishSyncEngine);
-          Logging.debug("Engine registered.");
-        
-          if (this.isFirstStart()) {
-            Logging.debug("First start");
-            this.promptAndSync();
-          }
-
-        } finally {
-          Weave.Service.unlock();
-        }
+        Services.obs.removeObserver(this, "weave:service:ready");
+        this.startEngine();
         break;
 
       case "addon-options-displayed":
-        if (data == "{0e3fc079-afbb-4a00-87e5-9486062d0f9c}") {
-          let self = this;
-          subject.getElementById("stsreset-button")
-                 .addEventListener("command", function STS_onResetButton() {
-                    self.promptAndSync("resetPrompt", "keepPrompt");
-                 }, false);
-        }
+        if (this.data && data == this.data.id)
+          this.handleOptions(subject);
         break;
     }
   },
   
+  startEngine: function STS_startEngine() {
+    try { this.stylish = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle); }
+    catch (exc) {}
+
+    if (this.stylish === null) {
+      Logging.warn("Stylish doesn't seem to be installed. Exiting.");
+      return;
+    }
+
+    if (!Weave.Service.lock()) {
+      Logging.error("Cannot lock sync service. Engine not registered.");
+      return;
+    }
+
+    try {
+
+      Weave.Engines.register(StylishSyncEngine);
+      Logging.debug("Engine registered.");
+        
+      let backup = Services.prefs.getBoolPref("extensions.stylishsync.autobak");
+      
+      if (this.isFirstStart()) {
+        Logging.debug("First start");
+        StylishBackup.firstStart(this, backup);
+        this.promptAndSync();
+      } else
+        if (backup) StylishBackup.backup(this);
+      
+    } finally {
+      Weave.Service.unlock();
+    }
+  },  
+
   promptAndSync: function STS_promptAndSync(startPrompt, mergePrompt) {
     let eng = Weave.Engines.get("stylishsync");
     assert(!!eng, "Engine not registered");
@@ -142,7 +126,7 @@ var StylishSync = {
       choices[choices.length-1] += " ("+this.strings.get("sameAsCancel")+")";
       
     let selected = {value: 0};
-    let ok = Services.prompt.select(null,
+    let ok = Services.prompt.select(this.window, // may be null on first start
                                     this.strings.get("stylishsync"),
                                     this.strings.get(startPrompt),
                                     choices.length, choices, selected);
@@ -163,6 +147,43 @@ var StylishSync = {
       trackerInstance.score += SCORE_INCREMENT_XLARGE;
   },
   
+  handleOptions: function STS_handleOptions(doc) {
+    let self    = this;
+    let reset   = doc.getElementById("stsreset-btn");
+    let backup  = doc.getElementById("stsbackup-btn");
+    let restore = doc.getElementById("stsrestore-btn");
+    let name    = this.strings.get("stylishsync");
+
+    if (Weave.Engines.get("stylishsync")) {
+      reset.addEventListener("command", function STS_onResetButton() {
+         self.window = doc.defaultView;
+         self.promptAndSync("resetPrompt", "keepPrompt");
+         self.window = null;
+      }, false);
+      backup.addEventListener("command", function STS_onBackupButton() {
+         self.window = doc.defaultView;
+         let rc = StylishBackup.backup(self, true);
+         if (rc == StylishBackup.FAILED)
+           Services.prompt.alert(self.window, name, self.strings.get("backupError"));
+         self.window = null;
+      }, false);
+      restore.addEventListener("command", function STS_onRestoreButton() {
+         self.window = doc.defaultView;
+         let rc = StylishBackup.restore(self, null);
+         if (rc == StylishBackup.OK)
+           self.promptAndSync("restoredPrompt");
+         else if (rc == StylishBackup.FAILED)
+           Services.prompt.alert(self.window, name, self.strings.get("restoreError"));
+         self.window = null;
+      }, false);
+    } else {
+      [ "stsenabled-set", "stsimmediate-set", "stsmanage-set", "stsautobak-set",
+        "stsreset-btn",   "stsbackup-btn",    "stsrestore-btn" ].forEach(function(id){
+        doc.getElementById(id).setAttribute("disabled", "true");
+      });
+    }
+  },  
+
   isFirstStart: function STS_isFirstStart() {
     let data = null, conn = null, stmt = null;
     try {
@@ -323,6 +344,14 @@ StylishSyncStore.prototype = {
     let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
     for (let s in styles)
       new StyleWrapper(null, styles[s]).delete();
+    let conn = null;
+    try {
+      let data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+      conn = data.getConnection();
+      conn.executeSimpleSQL("delete from sqlite_sequence where name in ('styles', 'style_meta')");
+    } finally {
+      if (conn) conn.close();
+    }
   },
   
   create: function STS_create(rec) {
@@ -384,13 +413,18 @@ StylishSyncTracker.prototype = {
         break;
         
       case "weave:engine:stop-tracking":
-        Services.obs.removeObserver(this, "stylish-style-add");
-        Services.obs.removeObserver(this, "stylish-style-change");
-        Services.obs.removeObserver(this, "stylish-style-delete");
-        Services.obs.removeObserver(this, "weave:engine:stop-tracking");
+        this.stopTracking();
         break;
     }
+  },
+  
+  stopTracking: function STT_stopTracking() {
+    Services.obs.removeObserver(this, "stylish-style-add");
+    Services.obs.removeObserver(this, "stylish-style-change");
+    Services.obs.removeObserver(this, "stylish-style-delete");
+    Services.obs.removeObserver(this, "weave:engine:stop-tracking");
   }
+  
 };
 
 function StylishSyncEngine() {

@@ -4,9 +4,203 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/FileUtils.jsm");
+Components.utils.import("resource://gre/modules/DownloadLastDir.jsm");  
 Components.utils.import("resource://gre/modules/PopupNotifications.jsm");
+Components.utils.import("resource://services-sync/main.js");
 
-var EXPORTED_SYMBOLS = [ "Logging" ];
+var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "Logging", "assert" ];
+
+//*****************************************************************************
+//* Helpers
+//*****************************************************************************
+function SyncError(txt, level) {
+  if (level === undefined) level = 0
+  this.message = txt;
+  this.name    = "SyncError";
+  let info = Logging.callerInfo(level+1);
+  for (let p in info)
+    this[p] = info[p];
+}
+SyncError.prototype = new Error();
+SyncError.prototype.constructor = SyncError;
+
+function assert(cond, txt)
+{
+  if (!cond)
+    throw new SyncError(txt||"Assertion Error", 1);
+}
+
+//*****************************************************************************
+//* Backup / Restore
+//*****************************************************************************
+// TODO: refactor engine to its own module
+const STYLISH_MODE_SYNCING = 1024;
+
+var StylishBackup = {
+  OK:        0,
+  CANCELLED: 1,
+  FAILED:    2,
+  
+  bakdir: FileUtils.getDir("ProfD", ["stylishsync"]),
+  
+  backup: function STB_backup(sts, prompt, file) {
+    let conn = null;
+    
+    try {
+      if (prompt) {
+        file = this.pickFile(sts, false);
+        if (!file) return this.CANCELLED;
+      } else if (!file) {
+        let now = new Date();
+        if (this.bakdir.exists()) { // otherwise, will be created later...
+          // Do automatic backups like places: once a day
+          let dir = this.bakdir.directoryEntries;
+          let age = Services.prefs.getIntPref("extensions.stylishsync.bakage") * 24 * 3600 * 1000;
+        
+          while (dir.hasMoreElements()) { // clean up old backups
+            let f = dir.getNext().QueryInterface(Components.interfaces.nsIFile);
+            if (/^stylishsync-\d{4}-\d\d-\d\d\.sqlite/.test(f.leafName)) {
+              if (now.getTime()-f.lastModifiedTime > age) {
+                f.remove(false); Logging.debug("removed backup: "+f.leafName);
+              }
+            }
+          }
+        }
+        file = this.bakdir.clone();
+        file.append(now.toLocaleFormat("stylishsync-%Y-%m-%d.sqlite"));
+        
+        if (file.exists()) return this.CANCELLED;
+      }
+      if (file) {
+        let data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+        if (!file.parent.exists())  file.parent.create(1, 0x700);
+        if (file.exists())          file.remove(false);
+
+        Services.storage.backupDatabaseFile(data.getFile(), file.leafName, file.parent);
+        
+        // remove GUIDs from backup
+        conn = Services.storage.openDatabase(file);
+        conn.schemaVersion = this.stylishSchema();
+        conn.executeSimpleSQL("delete from style_meta where name = 'syncguid'");
+        conn.executeSimpleSQL("vacuum");
+
+        Logging.debug("created backup: "+file.path);
+        return this.OK;
+      }
+    } catch (exc) {
+      Logging.logException(exc);
+    } finally {
+      if (conn) conn.close();
+    }
+    return this.FAILED;
+  },
+  
+  restore: function STB_restore(sts, file) {
+    let conn = null , stmt = null;
+    try {
+      if (!file) {
+        file = this.pickFile(sts, true);
+        if (!file || !Services.prompt.confirm(sts.window, sts.strings.get("stylishsync"),
+                                                          sts.strings.get("confirmRestore")))
+          return this.CANCELLED;
+      }
+      if (!file) return this.CANCELLED;
+      
+      let stylish = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
+      
+      conn        = Services.storage.openDatabase(file);
+      assert(conn.schemaVersion == this.stylishSchema(), "Stylish database format changed. Cannot restore!");
+
+      assert(Weave.Service.lock(), "Cannot lock sync service");
+      
+      let eng = Weave.Engines.get("stylishsync");
+      assert(!!eng, "Engine not registered");
+      
+      eng.wipeClient();
+
+      conn = Services.storage.openDatabase(file);
+      
+      stmt = conn.createStatement("select s.*, m.name as meta, m.value as mval "+
+                                   "from styles as s left outer join "+
+                                        "style_meta as m on s.id = style_id "+
+                                   "order by s.id");
+      let style  = null;
+      let lastId = -1;
+      while (stmt.executeStep()) {
+        let row = stmt.row;
+        if (!style || row.id != lastId) {
+          if (style)
+            style.save();
+          lastId = row.id;
+          style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
+          style.mode = STYLISH_MODE_SYNCING | stylish.CALCULATE_META | stylish.REGISTER_STYLE_ON_CHANGE;
+          style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
+                     row.name, row.code,  row.enabled,   row.originalCode); 
+        }
+        if (row.meta)
+          style.addMeta(row.meta, row.mval)
+      }
+      if (style)
+        style.save();
+        
+      return this.OK;
+    } catch (exc) {
+      Logging.logException(exc);
+
+    } finally {
+      Weave.Service.unlock();
+      if (stmt) { stmt.reset(); stmt.finalize(); }
+      if (conn) { conn.close() };
+    }
+    return this.FAILED;
+  },
+  
+  firstStart: function STB_firstStart(sts, doBackup) {
+    gDownloadLastDir.setFile("chrome://stylishsync", this.bakdir);
+    if (!this.bakdir.exists())
+      this.bakdir.create(1, 0x700);
+    if (doBackup) {
+      let f = this.bakdir.clone();
+      f.append("stylishsync-firstrun.sqlite");
+      this.backup(sts, null, f);
+    }
+  },
+  
+  stylishSchema: function STB_stylishSchema() {
+    let conn = null;
+    try {
+      let data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+      conn = data.getConnection();
+      return conn.schemaVersion;
+    } finally {
+      if (conn) conn.close();
+    }
+  },
+  
+  pickFile: function STB_pickFile(sts, restore) {
+    
+    assert(!!sts.window, "No parent window for file picker");
+    let name   = sts.strings.get("stylishsync");
+    let title  = restore ? sts.strings.get("restorePrompt") : sts.strings.get("backupPrompt");
+    let FP     = Components.interfaces.nsIFilePicker;
+    let picker = Components.classes["@mozilla.org/filepicker;1"].createInstance(FP);
+
+    picker.init(sts.window, name+" - "+title, restore ? FP.modeOpen : FP.modeSave);
+    picker.appendFilter(name, "stylishsync*.sqlite");
+    picker.appendFilters(FP.filterAll);
+
+    picker.displayDirectory = gDownloadLastDir.getFile("chrome://stylishsync");
+    picker.defaultString    = "stylishsync.sqlite";
+    
+    let ok = picker.show();
+    
+    if (ok == FP.returnCancel) return null;
+    
+    gDownloadLastDir.setFile("chrome://stylishsync", picker.displayDirectory);
+    
+    return picker.file;
+  }
+};
 
 //*****************************************************************************
 //* Logging

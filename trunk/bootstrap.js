@@ -24,10 +24,14 @@ function uninstall(params, reason) {}
 
 
 const DEFAULT_PREFS = {
-  "services.sync.engine.stylishsync": true,
   "extensions.stylishsync.debug":     false,
   "extensions.stylishsync.immediate": false,
-  "services.sync.prefs.sync.extensions.stylishsync.immediate": true
+  "extensions.stylishsync.autobak":   true,
+  "extensions.stylishsync.bakage":    14,
+  "services.sync.engine.stylishsync": true,
+  "services.sync.prefs.sync.extensions.stylishsync.immediate": true,
+  "services.sync.prefs.sync.extensions.stylishsync.autobak":   true,
+  "services.sync.prefs.sync.extensions.stylishsync.bakage":    true
 };
 
 function setDefaultPrefs() {
