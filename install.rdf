@@ -6,7 +6,7 @@
     <em:type>2</em:type>
     <em:bootstrap>true</em:bootstrap>
     <em:name>Stylish Sync</em:name>
-    <em:version>0.0.2</em:version>
+    <em:version>0.0.4-dev</em:version>
     <em:creator>Herrminator</em:creator><!-- stylishsync.t0s@gishpuppy.com -->
     <em:contributor></em:contributor>
     <em:description>Sync engine for Stylish.</em:description>
@@ -34,5 +34,6 @@
         <em:maxVersion>2.10a1</em:maxVersion>
       </Description>
     </em:targetApplication>
+    <em:updateURL>https://stylishsync.googlecode.com/svn/trunk/update.rdf</em:updateURL>
   </Description>
 </RDF>
