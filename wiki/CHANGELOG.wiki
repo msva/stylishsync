@@ -1,0 +1,23 @@
+#summary stylishsync Release History
+#labels Featured
+
+This is a history of `stylishsync`-Versions.
+
+The complete change-log can be found [http://code.google.com/p/stylishsync/source/list here] and a developer-annotated change-log is
+[https://stylishsync.googlecode.com/svn/trunk/changelog.txt here].
+
+= Release History =
+
+<wiki:comment>
+In case somebody's wondering why I'm using HTML-markup: I want to copy this
+page to and from the AMO release notes.
+</wiki:comment>
+
+=== v0.1.0 (unreleased) ===
+ <li>Added backup and restore facility with automatic daily backups.</li>
+ <li>Added sync reset facility (like Mozilla's engines).</li>
+ <li>Select sync method (merge, replace) on first install.</li>
+ <li>Sync stylish settings (same platform only).</li>
+
+=== v0.0.2 ===
+ <li>Initial release on [https://addons.mozilla.org/en-US/addon/stylishsync/ AMO].</li>
