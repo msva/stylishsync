@@ -310,7 +310,7 @@ StylishSyncEngine.prototype = {
   _storeObj:   StylishSyncStore,
   _trackerObj: StylishSyncTracker,
 
-  _findDupe: function STS_findDupe(rec) {
+  _findDupe: function STE_findDupe(rec) {
     Logging.debug("_findDupe: "+dbgFmt(rec.cleartext));
     let styles = this.svc.list(STYLISH_MODE_FOR_SYNC, {});
     for (let s in styles) {
@@ -325,7 +325,7 @@ StylishSyncEngine.prototype = {
     return null;
   },
   
-  shutdown: function() {
+  shutdown: function STE_shutdown() {
     if (this.trackerInstance) this.trackerInstance.stopTracking(true);
   },
   
