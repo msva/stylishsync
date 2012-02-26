@@ -184,6 +184,8 @@ var StylishSync = {
     if (ver < [0,1,0]) {
       // Fix duplicate metas from 0.0.2
       StsUtil.fixDuplicateMetas(this.stylish);
+      // Set default backup directory
+      StylishBackup.firstStart(this, false);
     } else
       mig = false;
       
