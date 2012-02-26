@@ -4,101 +4,97 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://stylishsync/content/stsutils.jsm");
-Components.utils.import("resource://services-sync/engines.js");
-Components.utils.import("resource://services-sync/record.js");
-Components.utils.import("resource://services-sync/util.js");
+Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
 Components.utils.import("resource://services-sync/main.js");
-Components.utils.import("resource://services-sync/constants.js");
 
-var EXPORTED_SYMBOLS = [ "StylishSync", "StylishSyncEngine", "StylishSyncRecord" ];
-
-//*****************************************************************************
-//* Helper classes and variables
-//*****************************************************************************
-
-var trackerInstance = null;
-
-function SyncStringBundle() {
-  this.load();
-}
-
-SyncStringBundle.prototype = {
-  _bundle: null,
-  load: function SSB_load() {
-    this._bundle = Services.strings.createBundle("chrome://stylishsync/locale/stylishsync.properties");
-  },
-  
-  get: function SSB_get(key) {
-    return this._bundle.GetStringFromName(key);
-  }
-};
+var EXPORTED_SYMBOLS = [ "StylishSync" ];
 
 //*****************************************************************************
 //* Main class
 //*****************************************************************************
 
 var StylishSync = {
+
   data:     null,
   stylish:  null,
   strings:  null,
   window:   null,
 
   startup: function STS_startup(data, reason) {
-    this.data = data;
-    Services.strings.flushBundles();
-    this.strings = new SyncStringBundle();
+    try {
+      this.data = data;
+      Services.strings.flushBundles();
+      this.strings = new SyncStringBundle();
     
-    if (reason == 1) Services.obs.addObserver(this, "weave:service:ready",  false);
-    else             this.startEngine();
+      if (reason == 1) Services.obs.addObserver(this, "weave:service:ready",  false);
+      else             this.startEngine();
 
-    Services.obs  .addObserver(this, "addon-options-displayed", false);
-    Services.prefs.addObserver("extensions.stylishsync.stylish", this, false);
-    Logging.debug("startup: " + reason);
-    this.handleStylishSettings();
+      Services.obs  .addObserver(this, "addon-options-displayed", false);
+      Services.prefs.addObserver("extensions.stylishsync.stylish", this, false);
+      this.handleStylishSettings();
+      Logging.debug("startup: " + reason);
+    } catch (exc) {
+      Logging.logException(exc);
+      throw(exc);
+    }
   },
   
   shutdown: function STS_shutdown(data, reason) {
-    let engine = Weave.Engines.get("stylishsync");
-    Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
+    try {
+      let engine = Weave.Engines.get("stylishsync");
+      Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
     
-    if (trackerInstance)  trackerInstance.stopTracking();
-    if (engine)           Weave.Engines.unregister(engine);
+      if (engine) { 
+        engine.shutdown();
+        Weave.Engines.unregister(engine);
+      }
 
-    try { Services.obs  .removeObserver(this, "addon-options-displayed"); } catch (exc) {}
-    try { Services.prefs.removeObserver("extensions.stylishsync.stylish", this); } catch (exc) {}
+      try { Services.obs  .removeObserver(this, "addon-options-displayed"); } catch (exc) {}
+      try { Services.prefs.removeObserver("extensions.stylishsync.stylish", this); } catch (exc) {}
     
-    Logging.debug("shutdown: " + reason);
+      Logging.debug("shutdown: " + reason);
+    } catch (exc) {
+      Logging.logException(exc);
+      throw(exc);
+    }
   },
   
   observe: function STS_observe(subject, topic, data) {
-    Logging.debug("STS_observe: " + subject + ", " + topic);
+    try {
+      Logging.debug("STS_observe: " + subject + ", " + topic);
 
-    switch (topic) {
-      case "weave:service:ready":
-        Services.obs.removeObserver(this, "weave:service:ready");
-        this.startEngine();
-        break;
+      switch (topic) {
+        case "weave:service:ready":
+          Services.obs.removeObserver(this, "weave:service:ready");
+          this.startEngine();
+          break;
 
-      case "addon-options-displayed":
-        if (this.data && data == this.data.id)
-          this.handleOptions(subject);
-        break;
+        case "addon-options-displayed":
+          if (this.data && data == this.data.id)
+            this.handleOptions(subject);
+          break;
         
-      case "nsPref:changed":
-        if (data == "extensions.stylishsync.stylish")
-          this.handleStylishSettings();
-        break;
+        case "nsPref:changed":
+          if (data == "extensions.stylishsync.stylish")
+            this.handleStylishSettings();
+          break;
+      }
+    } catch (exc) {
+      Logging.logException(exc);
+      throw(exc);
     }
   },
   
   startEngine: function STS_startEngine() {
     try { this.stylish = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle); }
     catch (exc) {}
-
+    
     if (this.stylish === null) {
       Logging.warn("Stylish doesn't seem to be installed. Exiting.");
       return;
     }
+
+    this.migrate();
 
     if (!Weave.Service.lock()) {
       Logging.error("Cannot lock sync service. Engine not registered.");
@@ -115,7 +111,7 @@ var StylishSync = {
       if (this.isFirstStart()) {
         Logging.debug("First start");
         StylishBackup.firstStart(this, backup);
-        this.promptAndSync();
+        StsUtil.promptAndSync(null, "stylishsync");
       } else
         if (backup) StylishBackup.backup(this);
       
@@ -124,55 +120,6 @@ var StylishSync = {
     }
   },  
 
-  promptAndSync: function STS_promptAndSync(startPrompt, mergePrompt) {
-    let eng = Weave.Engines.get("stylishsync");
-    assert(!!eng, "Engine not registered");
-    
-    startPrompt = startPrompt || "firstStartPrompt";
-    mergePrompt = mergePrompt || "mergePrompt";
-    
-    let choices = [ this.strings.get(mergePrompt),
-                    this.strings.get("wipeClientPrompt"),
-                    this.strings.get("wipeServerPrompt"),
-                    this.strings.get("disablePrompt")
-                  ];
-    if (startPrompt != "firstStartPrompt")
-      choices[0] += " ("+this.strings.get("sameAsCancel")+")";
-    else
-      choices[choices.length-1] += " ("+this.strings.get("sameAsCancel")+")";
-      
-    let selected = {value: 0};
-    let ok = Services.prompt.select(this.window, // may be null on first start
-                                    this.strings.get("stylishsync"),
-                                    this.strings.get(startPrompt),
-                                    choices.length, choices, selected);
-
-    if (!ok && startPrompt == "firstStartPrompt")
-      selected.value = choices.length-1; // disable engine
-    
-    eng.enabled = (selected.value != choices.length-1);
-
-    if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
-
-    switch (selected.value) {
-      case 0:
-        Logging.debug("Merging data (waiting for sync)");
-        break;
-      case 1:
-        Logging.debug("Wiping client");
-        Weave.Service.wipeClient([eng.name]);
-        break;
-      case 2:
-        Logging.debug("Wiping server");
-        Weave.Service.resetClient([eng.name]);
-        Weave.Service.wipeServer([eng.name]);
-        Weave.Clients.sendCommand("wipeEngine", [eng.name]);
-        break;
-    }
-    if (trackerInstance)
-      trackerInstance.score += SCORE_INCREMENT_XLARGE;
-  },
-  
   handleOptions: function STS_handleOptions(doc) {
     let self    = this;
     let reset   = doc.getElementById("stsreset-btn");
@@ -181,11 +128,11 @@ var StylishSync = {
     let name    = this.strings.get("stylishsync");
 
     if (Weave.Engines.get("stylishsync")) {
+      // Show Reset Dialog
       reset.addEventListener("command", function STS_onResetButton() {
-         self.window = doc.defaultView;
-         self.promptAndSync("resetPrompt", "keepPrompt");
-         self.window = null;
+         StsUtil.promptAndSync(doc.defaultView, "stylishsync", "resetPrompt", "keepPrompt");
       }, false);
+      // Create Backup
       backup.addEventListener("command", function STS_onBackupButton() {
          self.window = doc.defaultView;
          let rc = StylishBackup.backup(self, true);
@@ -193,16 +140,17 @@ var StylishSync = {
            Services.prompt.alert(self.window, name, self.strings.get("backupError"));
          self.window = null;
       }, false);
+      // Restore Database
       restore.addEventListener("command", function STS_onRestoreButton() {
          self.window = doc.defaultView;
          let rc = StylishBackup.restore(self, null);
          if (rc == StylishBackup.OK)
-           self.promptAndSync("restoredPrompt");
+           StsUtil.promptAndSync(doc.defaultView, "stylishsync", "restoredPrompt");
          else if (rc == StylishBackup.FAILED)
            Services.prompt.alert(self.window, name, self.strings.get("restoreError"));
          self.window = null;
       }, false);
-    } else { // engine not (yet) registered
+    } else { // engine not (yet) registered, disable controls
       [ "stsenabled-set", "stsimmediate-set", "stsmanage-set", "stsautobak-set",
         "stsreset-btn",   "stsbackup-btn",    "stsrestore-btn" ].forEach(function(id){
         doc.getElementById(id).setAttribute("disabled", "true");
@@ -224,6 +172,24 @@ var StylishSync = {
     });
   },
   
+  migrate: function STS_migrate() {
+    if (!this.stylish) return; // nevermind
+    
+    let ver  = Services.prefs.getCharPref("extensions.stylishsync.version").split(".");
+    if (!(ver < this.data.version.split("."))) return;
+    let mig = true;
+    
+    if (ver < [0,1,0]) {
+      // Fix duplicate metas from 0.0.2
+      StsUtil.fixDuplicateMetas(this.stylish);
+    } else
+      mig = false;
+      
+    Services.prefs.setCharPref("extensions.stylishsync.version", this.data.version);
+
+    if (mig) Logging.debug("Migrated: '"+ver+"' -> '"+this.data.version+"'");
+  },
+  
   isFirstStart: function STS_isFirstStart() {
     let data = null, conn = null, stmt = null;
     try {
@@ -243,261 +209,3 @@ var StylishSync = {
   }
   
 };
-
-//*****************************************************************************
-//* Custom Sync Engine classes
-//*****************************************************************************
-
-const STYLE_PROPS = [
-  "url",  "idUrl",   "updateUrl", "md5Url", "name",
-  "code", "enabled", "originalCode"
-];
-
-const STYLE_META = [ "url", "url-prefix", "domain", "regexp", "type", "tag" ];
-const STYLISH_MODE_SYNCING = 1024;
-
-function dbgFmt(obj) {
-  if (!Logging.DEBUG) return "";
-  let snip = function(key, value) { return (key == "code") ? value.substring(0, 256) : value; }
-  return JSON.stringify(obj, snip);
-}
-
-function StyleWrapper(guid, styleobj) {
-  this.svc   = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
-  this.guid  = guid;
-  this.style = null;
-  if (guid) {
-    let styles = this.svc.findByMeta("syncguid", guid, this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
-    if (styles.length != 0) assert(styles.length == 1);
-    this.style = styles[0];
-  } else if (styleobj) {
-    this.guid  = Utils.makeGUID();
-    this.style = styleobj;
-    if (this.style) {
-      let m = this.style.getMeta("syncguid", {});
-      assert( m.length == 0 || m.length == 1);
-      if (m.length == 0) {
-        this.style.addMeta("syncguid", this.guid);
-        this.save();
-      }
-      else
-        this.guid = m[0];
-    }
-  }
-  if (!this.style) {
-    this.style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
-    this.style.mode = this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE;
-    this.style.init(null, null, null, null, null, "", false, null);
-    this.style.addMeta("syncguid", this.guid);
-  }
-  this.id   = this.style.id;
-  for (let p in STYLE_PROPS)
-    this[STYLE_PROPS[p]] = this.style[STYLE_PROPS[p]];
-}
-
-StyleWrapper.prototype = {
-  save: function STW_save() {
-    this.style.mode |= STYLISH_MODE_SYNCING;
-    this.style.save();
-  },
-  
-  delete: function STW_delete() {
-    this.style.mode |= STYLISH_MODE_SYNCING;
-    this.style.delete();
-  },
-  
-  fromRecord: function STW_fromRecord(rec) {
-    for (let p in STYLE_PROPS)
-      this.style[STYLE_PROPS[p]] = rec[STYLE_PROPS[p]];
-    if (rec.meta) {
-      let self = this;
-      for (let name in rec.meta) {
-        self.style.removeAllMeta(name);
-        rec.meta[name].forEach(function (val) {
-          self.style.addMeta(name, val);
-        });
-      }
-    }
-  },
-  
-  toRecord: function STW_toRecord(rec) {
-    for (let p in STYLE_PROPS)
-      rec[STYLE_PROPS[p]] = this.style[STYLE_PROPS[p]];
-    rec.meta = {};
-    let self = this;
-    STYLE_META.forEach(function (name) {
-      let m = self.style.getMeta(name, {});
-      if (m && m.length > 0) rec.meta[name] = m;
-    });
-  }
-  
-};
-
-function StylishSyncRecord(collection, id) {
-  CryptoWrapper.call(this, collection, id);
-}
-
-StylishSyncRecord.prototype = {
-  __proto__: CryptoWrapper.prototype,
-  _logName: "Record.StylishSync",
-  
-};
-
-Utils.deferGetSet(StylishSyncRecord, "cleartext", STYLE_PROPS.concat(["meta"]));
-
-function StylishSyncStore(name) {
-  this.svc = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
-  Store.call(this, name);
-}
-
-StylishSyncStore.prototype = {
-  __proto__: Store.prototype,
-  
-  itemExists: function STS_itemExists(id) {
-    return new StyleWrapper(id).id != 0;
-  },
-  
-  createRecord: function STS_createRecord(id, coll) {
-    let rec  = new StylishSyncRecord(coll, id);
-    let wrap = new StyleWrapper(id);
-    Logging.debug("createRecord: "+id+", "+coll+", "+dbgFmt(wrap));
-    // I've got this from engines/passwords.js:
-    if (wrap.id == 0) {
-      rec.deleted = true;
-    }
-    else
-      wrap.toRecord(rec);
-    return rec;
-  },
-  
-  changeItemID: function STS_changeItemID(old, neew) {
-    Logging.debug("changeItemID: "+old+" -> "+neew);
-    let wrap = new StyleWrapper(old);
-    assert (wrap.style != null);
-    wrap.style.removeAllMeta("syncguid");
-    wrap.style.addMeta("syncguid", neew);
-    wrap.save();
-  },
-  
-  getAllIDs: function STS_getAllIDs() {
-    Logging.debug("getAllIDs");
-    let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
-    let guids  = {};
-    for (let s in styles) {
-      let wrap = new StyleWrapper(null, styles[s]);
-      guids[wrap.guid] = true;
-    }
-    return guids;
-  },
-  
-  wipe: function STS_wipe() {
-    let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
-    for (let s in styles)
-      new StyleWrapper(null, styles[s]).delete();
-    let conn = null;
-    try {
-      let data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
-      conn = data.getConnection();
-      conn.executeSimpleSQL("delete from sqlite_sequence where name in ('styles', 'style_meta')");
-    } finally {
-      if (conn) conn.close();
-    }
-  },
-  
-  create: function STS_create(rec) {
-    return this.update(rec);
-  },
-  
-  update: function STS_update(rec) {
-    Logging.debug("update: "+dbgFmt(rec.cleartext));
-    let wrap = new StyleWrapper(rec.id);
-    wrap.fromRecord(rec);
-    if (wrap.style.name != null)
-      wrap.save();
-    else
-      Logging.debug("update tried to save null name...");
-  },
-  
-  remove: function STS_remove(rec) {
-    Logging.debug("remove: "+dbgFmt(rec));
-    let wrap = new StyleWrapper(rec.id);
-    if (wrap.style.id != 0)
-      wrap.delete();
-  }
-};
-
-function StylishSyncTracker(name) {
-  Tracker.call(this, name);
-  if (!trackerInstance) {
-    Services.obs.addObserver(this, "stylish-style-add",    false);
-    Services.obs.addObserver(this, "stylish-style-change", false);
-    Services.obs.addObserver(this, "stylish-style-delete", false);
-    Services.obs.addObserver(this, "weave:engine:stop-tracking", false);
-    Logging.debug("StylishSyncTracker singleton created");
-    trackerInstance = this;
-  } else {
-    Logging.debug("StylishSyncTracker already present!");
-  }
-}
-
-StylishSyncTracker.prototype = {
-  __proto__: Tracker.prototype,
-  _enabled:  true,
-  
-  observe: function STT_observe(subject, topic, data) {
-    Logging.debug("STT_observe: " + subject + ", " + topic);
-    switch (topic) {
-      case "stylish-style-add":
-      case "stylish-style-change":
-      case "stylish-style-delete":
-        let style = subject;
-        if ((style.mode & STYLISH_MODE_SYNCING) == 0) {
-          let wrap = new StyleWrapper(null, style);
-          this.addChangedID(wrap.guid);
-          let now = Services.prefs.getBoolPref("extensions.stylishsync.immediate");
-          this.score += now ? SCORE_INCREMENT_XLARGE : SCORE_INCREMENT_MEDIUM;
-        } else {
-          Logging.debug("already syncing: "+style.id+", "+style.name);
-          style.mode &= ~STYLISH_MODE_SYNCING;
-        }
-        break;
-        
-      case "weave:engine:stop-tracking":
-        this.stopTracking();
-        break;
-    }
-  },
-  
-  stopTracking: function STT_stopTracking() {
-    Services.obs.removeObserver(this, "stylish-style-add");
-    Services.obs.removeObserver(this, "stylish-style-change");
-    Services.obs.removeObserver(this, "stylish-style-delete");
-    Services.obs.removeObserver(this, "weave:engine:stop-tracking");
-  }
-  
-};
-
-function StylishSyncEngine() {
-  Weave.SyncEngine.call(this, "StylishSync");
-  this.svc = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
-}
-
-StylishSyncEngine.prototype = {
-  __proto__:   Weave.SyncEngine.prototype,
-  _recordObj:  StylishSyncRecord,
-  _storeObj:   StylishSyncStore,
-  _trackerObj: StylishSyncTracker,
-
-  _findDupe: function STS_findDupe(rec) {
-    Logging.debug("_findDupe: "+dbgFmt(rec.cleartext));
-    let styles = this.svc.list(this.svc.CALCULATE_META | this.svc.REGISTER_STYLE_ON_CHANGE, {});
-    for (let s in styles) {
-      let wrap = new StyleWrapper(null, styles[s]);
-      if (wrap.guid && wrap.name == rec.name && wrap.code.trim() == rec.code.trim())
-        return wrap.guid;
-    }
-    return null;
-  }
-  
-};
-

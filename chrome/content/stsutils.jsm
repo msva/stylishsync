@@ -8,7 +8,8 @@ Components.utils.import("resource://gre/modules/DownloadLastDir.jsm");
 Components.utils.import("resource://gre/modules/PopupNotifications.jsm");
 Components.utils.import("resource://services-sync/main.js");
 
-var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "Logging", "assert" ];
+var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "SyncStringBundle",
+                         "StsUtil",  "Logging" ];
 
 //*****************************************************************************
 //* Helpers
@@ -24,17 +25,156 @@ function SyncError(txt, level) {
 SyncError.prototype = new Error();
 SyncError.prototype.constructor = SyncError;
 
-function assert(cond, txt)
-{
-  if (!cond)
-    throw new SyncError(txt||"Assertion Error", 1);
+function SyncStringBundle() {
+  this.load();
 }
+
+SyncStringBundle.prototype = {
+  _bundle: null,
+  load: function SSB_load() {
+    this._bundle = Services.strings.createBundle("chrome://stylishsync/locale/stylishsync.properties");
+  },
+  
+  get: function SSB_get(key) {
+    return this._bundle.GetStringFromName(key);
+  }
+};
+
+var StsUtil = {
+  assert: function STU_assert(cond, txt)
+  {
+    if (!cond)
+      throw new SyncError(txt||"Assertion Error", 1);
+  },
+
+  unique: function STU_unique(arr) {
+   let seen = {};
+   return arr.filter(function(elt) {
+     let ok = !seen[elt]; if (ok) seen[elt] = true;
+     return ok;
+   });
+  },
+  
+  arrayEqual: function STU_arrayEqual(l,r) {
+    return (l==r) || !(l<r || l>r);
+  },
+
+  loggedCatch: function STU_loggedCatch(proto) {
+    return function() {
+      try { return proto.apply(this, arguments); }
+      catch (exc) { Logging.logException(exc); throw exc; }
+    }
+  },
+  
+  errorLoggedClass: function STU_errorLoggedClass(clazz) {
+    for (let func in clazz.prototype) {
+      if (typeof clazz.prototype[func] == "function") {
+        let get = clazz.prototype.__lookupGetter__(func);
+        let set = clazz.prototype.__lookupSetter__(func);
+        if (get)
+          clazz.prototype__defineGetter__(func, this.loggedCatch(get));
+        else if (set)
+          clazz.prototype__defineSetter__(func, this.loggedCatch(set));
+        else
+          clazz.prototype[func] = this.loggedCatch(clazz.prototype[func]);
+      }
+    }
+    return clazz;
+  },
+  
+  // Maybe we can re-use this if we write another sync engine :)
+  promptAndSync: function STS_promptAndSync(parent, engine, startPrompt, mergePrompt) {
+    let eng = Weave.Engines.get(engine);
+    StsUtil.assert(!!eng, "Engine '"+engine+"' not registered");
+    
+    let wasLocked = Weave.Service.locked;
+    if (!wasLocked) Weave.Service.lock();
+    
+    try {
+      startPrompt      = startPrompt || "firstStartPrompt";
+      mergePrompt      = mergePrompt || "mergePrompt";
+      let strings      = new SyncStringBundle();
+      let cancelPrompt = " ("+strings.get("sameAsCancel")+")";
+      let cancelChoice = -1;
+      
+      let choices = [ strings.get(mergePrompt),
+                      strings.get("wipeClientPrompt"),
+                      strings.get("wipeServerPrompt"),
+                      strings.get("disablePrompt")
+                    ];
+      let disableChoice = choices.length-1;
+
+      if      (startPrompt == "firstStartPrompt") cancelChoice = disableChoice;
+      else if (startPrompt == "restoredPrompt")   cancelChoice = 0;
+      
+      if (cancelChoice >= 0) choices[cancelChoice] += cancelPrompt;
+
+      let selected = {value: 0};
+      let ok = Services.prompt.select(parent, // may be null on first start
+                                      strings.get(engine),
+                                      strings.get(startPrompt),
+                                      choices.length, choices, selected);
+
+      if      (!ok && cancelChoice >= 0) selected.value = cancelChoice;
+      else if (!ok) return;
+
+      eng.enabled = (selected.value != disableChoice);
+
+      if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
+
+      switch (selected.value) {
+        case 0:
+          Logging.debug("Merging data (waiting for sync)");
+          Weave.Service.resetClient([eng.name]);
+          break;
+        case 1:
+          Logging.debug("Wiping client");
+          Weave.Service.wipeClient([eng.name]);
+          break;
+        case 2:
+          Logging.debug("Wiping server");
+          Weave.Service.resetClient([eng.name]);
+          Weave.Service.wipeServer([eng.name]);
+          Weave.Clients.sendCommand("wipeEngine", [eng.name]);
+          break;
+      }
+      if (eng.trackerInstance) // try to sync as soon as possible
+        eng.trackerInstance.score += Weave.SCORE_INCREMENT_XLARGE;
+    } finally {
+      if (!wasLocked) Weave.Service.unlock();
+    }
+  },
+  
+  fixDuplicateMetas: function STU_fixDuplicateMetas(stylish) {
+    Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
+
+    Logging.debug("Fixing duplicate metas");
+
+    let styles = stylish.list(StylishConst.STYLISH_MODE_FOR_SYNC ,{});
+      
+    styles.forEach(function(style) {
+      let fixed = false;
+      StylishConst.STYLE_META.forEach(function(meta) {
+        let m = style.getMeta(meta, {});
+        let u = StsUtil.unique(m);
+        if (!StsUtil.arrayEqual(m, u)) {
+          Logging.debug("Fixing duplicates for "+style.name+", "+meta);
+          style.removeAllMeta(meta);
+          u.forEach(function(val) { style.addMeta(meta, val); });
+          fixed = true;
+        }
+      });
+      if (fixed)
+        style.save();
+    });
+  },
+};
 
 //*****************************************************************************
 //* Backup / Restore
 //*****************************************************************************
-// TODO: refactor engine to its own module
-const STYLISH_MODE_SYNCING = 1024;
+
+const assert = StsUtil.assert;
 
 var StylishBackup = {
   OK:        0,
@@ -96,6 +236,8 @@ var StylishBackup = {
   },
   
   restore: function STB_restore(sts, file) {
+    Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
+
     let conn = null , stmt = null;
     try {
       if (!file) {
@@ -120,7 +262,7 @@ var StylishBackup = {
 
       conn = Services.storage.openDatabase(file);
       
-      stmt = conn.createStatement("select s.*, m.name as meta, m.value as mval "+
+      stmt = conn.createStatement("select distinct s.*, m.name as meta, m.value as mval "+
                                    "from styles as s left outer join "+
                                         "style_meta as m on s.id = style_id "+
                                    "order by s.id");
@@ -133,7 +275,7 @@ var StylishBackup = {
             style.save();
           lastId = row.id;
           style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
-          style.mode = STYLISH_MODE_SYNCING | stylish.CALCULATE_META | stylish.REGISTER_STYLE_ON_CHANGE;
+          style.mode = StylishConst.STYLISH_MODE_SYNCING | StylishConst.STYLISH_MODE_FOR_SYNC;
           style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
                      row.name, row.code,  row.enabled,   row.originalCode); 
         }
@@ -182,15 +324,16 @@ var StylishBackup = {
     assert(!!sts.window, "No parent window for file picker");
     let name   = sts.strings.get("stylishsync");
     let title  = restore ? sts.strings.get("restorePrompt") : sts.strings.get("backupPrompt");
+    let patt   = "stylish" + (restore ? "": "sync") + "*.sqlite";
     let FP     = Components.interfaces.nsIFilePicker;
     let picker = Components.classes["@mozilla.org/filepicker;1"].createInstance(FP);
 
     picker.init(sts.window, name+" - "+title, restore ? FP.modeOpen : FP.modeSave);
-    picker.appendFilter(name, "stylish" + (restore ? "": "sync") + "*.sqlite");
+    picker.appendFilter(name+" ("+patt+")", patt);
     picker.appendFilters(FP.filterAll);
 
     picker.displayDirectory = gDownloadLastDir.getFile("chrome://stylishsync");
-    picker.defaultString    = "stylishsync.sqlite";
+    picker.defaultString    = restore ? "" : "stylishsync.sqlite";
     
     let ok = picker.show();
     

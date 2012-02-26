@@ -16,6 +16,7 @@ function shutdown(data, reason)
   
   Components.utils.unload("chrome://stylishsync/content/stylishsync.jsm");
   Components.utils.unload("chrome://stylishsync/content/stsutils.jsm");
+  Components.utils.unload("chrome://stylishsync/content/stsengine.jsm");
 }
 
 function install(params, reason) {}
@@ -29,6 +30,7 @@ const DEFAULT_PREFS = {
   "extensions.stylishsync.autobak":   true,
   "extensions.stylishsync.bakage":    14,
   "extensions.stylishsync.stylish":   true,
+  "extensions.stylishsync.version":   "",
   "services.sync.engine.stylishsync": true,
   "services.sync.prefs.sync.extensions.stylishsync.immediate": true,
   "services.sync.prefs.sync.extensions.stylishsync.autobak":   true,
