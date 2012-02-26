@@ -1,4 +1,5 @@
 #summary Stylish Sync documentation.
+#labels Featured
 
 = About =
 [http://code.google.com/p/stylishsync/ Stylish Sync] is an add-on for
