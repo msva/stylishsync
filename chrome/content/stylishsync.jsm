@@ -15,6 +15,8 @@ var EXPORTED_SYMBOLS = [ "StylishSync" ];
 
 var StylishSync = {
 
+  SYNC_ENGINE: "stylishsync",
+  
   data:     null,
   stylish:  null,
   strings:  null,
@@ -41,7 +43,7 @@ var StylishSync = {
   
   shutdown: function STS_shutdown(data, reason) {
     try {
-      let engine = Weave.Engines.get("stylishsync");
+      let engine = Weave.Engines.get(this.SYNC_ENGINE);
       Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
     
       if (engine) { 
@@ -111,7 +113,7 @@ var StylishSync = {
       if (this.isFirstStart()) {
         Logging.debug("First start");
         StylishBackup.firstStart(this, backup);
-        StsUtil.promptAndSync(null, "stylishsync");
+        StsUtil.promptAndSync(null, this.SYNC_ENGINE);
       } else
         if (backup) StylishBackup.backup(this);
       
@@ -127,10 +129,10 @@ var StylishSync = {
     let restore = doc.getElementById("stsrestore-btn");
     let name    = this.strings.get("stylishsync");
 
-    if (Weave.Engines.get("stylishsync")) {
+    if (Weave.Engines.get(this.SYNC_ENGINE)) {
       // Show Reset Dialog
       reset.addEventListener("command", function STS_onResetButton() {
-         StsUtil.promptAndSync(doc.defaultView, "stylishsync", "resetPrompt", "keepPrompt");
+         StsUtil.promptAndSync(doc.defaultView, self.SYNC_ENGINE, "resetPrompt", "keepPrompt");
       }, false);
       // Create Backup
       backup.addEventListener("command", function STS_onBackupButton() {
@@ -145,7 +147,7 @@ var StylishSync = {
          self.window = doc.defaultView;
          let rc = StylishBackup.restore(self, null);
          if (rc == StylishBackup.OK)
-           StsUtil.promptAndSync(doc.defaultView, "stylishsync", "restoredPrompt");
+           StsUtil.promptAndSync(doc.defaultView, self.SYNC_ENGINE, "restoredPrompt");
          else if (rc == StylishBackup.FAILED)
            Services.prompt.alert(self.window, name, self.strings.get("restoreError"));
          self.window = null;

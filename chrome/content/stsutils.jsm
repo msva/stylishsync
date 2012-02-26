@@ -60,7 +60,7 @@ var StsUtil = {
   },
 
   loggedCatch: function STU_loggedCatch(proto) {
-    return function() {
+    return function STU_loggedWrapper() {
       try { return proto.apply(this, arguments); }
       catch (exc) { Logging.logException(exc); throw exc; }
     }
