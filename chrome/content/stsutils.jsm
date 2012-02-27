@@ -7,6 +7,8 @@ Components.utils.import("resource://gre/modules/FileUtils.jsm");
 Components.utils.import("resource://gre/modules/DownloadLastDir.jsm");  
 Components.utils.import("resource://gre/modules/PopupNotifications.jsm");
 Components.utils.import("resource://services-sync/main.js");
+Components.utils.import("chrome://stylishsync/content/syncutils.jsm");
+Components.utils.import("chrome://stylishsync/content/logutils.jsm");
 
 var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "SyncStringBundle",
                          "StsUtil",  "Logging" ];
@@ -14,167 +16,38 @@ var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "SyncStringBundle",
 //*****************************************************************************
 //* Helpers
 //*****************************************************************************
-function SyncError(txt, level) {
-  if (level === undefined) level = 0
-  this.message = txt;
-  this.name    = "SyncError";
-  let info = Logging.callerInfo(level+1);
-  for (let p in info)
-    this[p] = info[p];
-}
-SyncError.prototype = new Error();
-SyncError.prototype.constructor = SyncError;
+// FIXME: Subclass?
+var StsUtil = SyncUtil;
 
-function SyncStringBundle() {
-  this.load();
-}
+StsUtil.fixDuplicateMetas = function STU_fixDuplicateMetas(stylish) {
+  Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
 
-SyncStringBundle.prototype = {
-  _bundle: null,
-  load: function SSB_load() {
-    this._bundle = Services.strings.createBundle("chrome://stylishsync/locale/stylishsync.properties");
-  },
-  
-  get: function SSB_get(key) {
-    return this._bundle.GetStringFromName(key);
-  }
-};
+  Logging.debug("Fixing duplicate metas");
 
-var StsUtil = {
-  assert: function STU_assert(cond, txt)
-  {
-    if (!cond)
-      throw new SyncError(txt||"Assertion Error", 1);
-  },
-
-  unique: function STU_unique(arr) {
-   let seen = {};
-   return arr.filter(function(elt) {
-     let ok = !seen[elt]; if (ok) seen[elt] = true;
-     return ok;
-   });
-  },
-  
-  arrayEqual: function STU_arrayEqual(l,r) {
-    return (l==r) || !(l<r || l>r);
-  },
-
-  loggedCatch: function STU_loggedCatch(proto) {
-    return function STU_loggedWrapper() {
-      try { return proto.apply(this, arguments); }
-      catch (exc) { Logging.logException(exc); throw exc; }
-    }
-  },
-  
-  errorLoggedClass: function STU_errorLoggedClass(clazz) {
-    for (let func in clazz.prototype) {
-      if (typeof clazz.prototype[func] == "function") {
-        let get = clazz.prototype.__lookupGetter__(func);
-        let set = clazz.prototype.__lookupSetter__(func);
-        if (get)
-          clazz.prototype__defineGetter__(func, this.loggedCatch(get));
-        else if (set)
-          clazz.prototype__defineSetter__(func, this.loggedCatch(set));
-        else
-          clazz.prototype[func] = this.loggedCatch(clazz.prototype[func]);
+  let styles = stylish.list(StylishConst.STYLISH_MODE_FOR_SYNC ,{});
+      
+  styles.forEach(function(style) {
+    let fixed = false;
+    StylishConst.STYLE_META.forEach(function(meta) {
+      let m = style.getMeta(meta, {});
+      let u = StsUtil.unique(m);
+      if (!StsUtil.arrayEqual(m, u)) {
+        Logging.debug("Fixing duplicates for "+style.name+", "+meta);
+        style.removeAllMeta(meta);
+        u.forEach(function(val) { style.addMeta(meta, val); });
+        fixed = true;
       }
-    }
-    return clazz;
-  },
-  
-  // Maybe we can re-use this if we write another sync engine :)
-  promptAndSync: function STS_promptAndSync(parent, engine, startPrompt, mergePrompt) {
-    let eng = Weave.Engines.get(engine);
-    StsUtil.assert(!!eng, "Engine '"+engine+"' not registered");
-    
-    let wasLocked = Weave.Service.locked;
-    if (!wasLocked) Weave.Service.lock();
-    
-    try {
-      startPrompt      = startPrompt || "firstStartPrompt";
-      mergePrompt      = mergePrompt || "mergePrompt";
-      let strings      = new SyncStringBundle();
-      let cancelPrompt = " ("+strings.get("sameAsCancel")+")";
-      let cancelChoice = -1;
-      
-      let choices = [ strings.get(mergePrompt),
-                      strings.get("wipeClientPrompt"),
-                      strings.get("wipeServerPrompt"),
-                      strings.get("disablePrompt")
-                    ];
-      let disableChoice = choices.length-1;
-
-      if      (startPrompt == "firstStartPrompt") cancelChoice = disableChoice;
-      else if (startPrompt == "restoredPrompt")   cancelChoice = 0;
-      
-      if (cancelChoice >= 0) choices[cancelChoice] += cancelPrompt;
-
-      let selected = {value: 0};
-      let ok = Services.prompt.select(parent, // may be null on first start
-                                      strings.get(engine),
-                                      strings.get(startPrompt),
-                                      choices.length, choices, selected);
-
-      if      (!ok && cancelChoice >= 0) selected.value = cancelChoice;
-      else if (!ok) return;
-
-      eng.enabled = (selected.value != disableChoice);
-
-      if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
-
-      switch (selected.value) {
-        case 0:
-          Logging.debug("Merging data (waiting for sync)");
-          Weave.Service.resetClient([eng.name]);
-          break;
-        case 1:
-          Logging.debug("Wiping client");
-          Weave.Service.wipeClient([eng.name]);
-          break;
-        case 2:
-          Logging.debug("Wiping server");
-          Weave.Service.resetClient([eng.name]);
-          Weave.Service.wipeServer([eng.name]);
-          Weave.Clients.sendCommand("wipeEngine", [eng.name]);
-          break;
-      }
-      if (eng.trackerInstance) // try to sync as soon as possible
-        eng.trackerInstance.score += Weave.SCORE_INCREMENT_XLARGE;
-    } finally {
-      if (!wasLocked) Weave.Service.unlock();
-    }
-  },
-  
-  fixDuplicateMetas: function STU_fixDuplicateMetas(stylish) {
-    Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
-
-    Logging.debug("Fixing duplicate metas");
-
-    let styles = stylish.list(StylishConst.STYLISH_MODE_FOR_SYNC ,{});
-      
-    styles.forEach(function(style) {
-      let fixed = false;
-      StylishConst.STYLE_META.forEach(function(meta) {
-        let m = style.getMeta(meta, {});
-        let u = StsUtil.unique(m);
-        if (!StsUtil.arrayEqual(m, u)) {
-          Logging.debug("Fixing duplicates for "+style.name+", "+meta);
-          style.removeAllMeta(meta);
-          u.forEach(function(val) { style.addMeta(meta, val); });
-          fixed = true;
-        }
-      });
-      if (fixed)
-        style.save();
     });
-  },
+    if (fixed)
+      style.save();
+  });
 };
 
 //*****************************************************************************
 //* Backup / Restore
 //*****************************************************************************
 
-const assert = StsUtil.assert;
+const assert = SyncUtil.assert;
 
 var StylishBackup = {
   OK:        0,
@@ -348,114 +221,5 @@ var StylishBackup = {
 //*****************************************************************************
 //* Logging
 //*****************************************************************************
-function CallerInfo() {
-}
-
-CallerInfo.prototype = {
-  filename: null, fileName: null, sourceLine: null, lineNumber: null, columnNumber: null
-}
-
-var Logging = {
-  PFX:        "stylishsync: ",
-  logfile:    null,
-  DEBUG:      Services.prefs.getBoolPref("extensions.stylishsync.debug"), // will be reloaded by main module
-  
-  callerInfo: function(level) { // should
-    if (!level) level = 0;
-    // see https://github.com/eriwen/javascript-stacktrace/blob/master/stacktrace.js
-    var info = new CallerInfo();
-    try { this.undef() /* throw exc with info */ }
-    catch (exc) {
-      info.stack = exc.stack;
-      var stack = exc.stack.replace(/(?:\n@:0)?\s+$/m, '').replace(/^\(/gm, '{anonymous}(').split('\n');
-      // "{anonymous}([object Object],\"refreshEngine\",[object Proxy])@chrome://gprivacy/content/gprivacy.js:134"
-      if (stack.length > level+1) {
-        var sinfo = stack[level+1].split('@');
-        if (sinfo.length == 2) {
-          info.sourceLine = sinfo[0];
-          var c = sinfo[1].lastIndexOf(":");
-          if (c != -1) { 
-            info.filename   = info.fileName = sinfo[1].slice(0, c);
-            info.lineNumber = parseInt(sinfo[1].slice(c+1));
-          } else {
-            info.filename   = info.fileName = sinfo[1]
-            info.lineNumber = 1;
-          }
-        }
-        else
-          info.sourcLine = stack[level+1];
-      }
-    }
-    return info;
-  },
-    
-  _writeFile: function(msg) {
-    if (this.logname !== undefined && this.logfile == null) return; // failed before
-    if (this.logfile == null) {
-      try         { this.logname = Services.prefs.getCharPref("extensions.stylishsync.logfile"); }
-      catch (exc) { this.logname = null; }
-      if (!this.logname) return;
-      this.logfile = new FileUtils.File(this.logname);
-      if (!this.logfile) return;
-    }
-    try {
-      let ostream = FileUtils.openFileOutputStream(this.logfile, 0x1A)
-      let sstream = Components.classes["@mozilla.org/intl/converter-output-stream;1"]
-                               .createInstance(Components.interfaces.nsIConverterOutputStream);
-      sstream.init(ostream, "UTF-8", 0, 0);
-      let logmsg = "["+new Date().toISOString()+"] "+
-                   msg.toString().replace(/^stylishsync:\s*/,"");
-      sstream.writeString(logmsg+"\n"); ostream.flush();
-      sstream.close();
-    } catch (exc) { this.logname = null; this._logException(exc, null, false); }
-  },
-  
-  log: function(txt) {
-    Services.console.logStringMessage(this.PFX + txt);
-    this._writeFile(txt);
-  },
-  
-  _logException: function(exc, txt, toFileIfOpen) {
-    txt = txt ? txt + ": " : ""
-    var excLog = Components.classes["@mozilla.org/scripterror;1"]
-                           .createInstance(Components.interfaces.nsIScriptError);
-    excLog.init(this.PFX + txt + (exc.message || exc.toString()),
-                exc.filename || exc.fileName, exc.location ? exc.location.sourceLine : null,
-                exc.lineNumber || 0, exc.columnNumber || 0,
-                excLog.errorFlag || 0, "stylishsync");
-    Services.console.logMessage(excLog);
-    if (toFileIfOpen) this._writeFile(excLog);
-  },
-  
-  logException: function(exc, txt) {
-    this._logException(exc, txt, true);
-  },
-  
-  info: function(txt) { this.log(txt); },
-
-  debug: function(txt) { if (this.DEBUG) this.log("DEBUG: "+txt); },
-
-  warn: function(txt, showSrcInfo, stackLevel) {
-    var warn = Components.classes["@mozilla.org/scripterror;1"]
-                         .createInstance(Components.interfaces.nsIScriptError);
-    if (stackLevel  === undefined) stackLevel  = 0;
-    var info = showSrcInfo ? this.callerInfo(stackLevel+1) : new CallerInfo();
-    warn.init(this.PFX + txt, info.filename, info.sourceLine, info.lineNumber, info.columnNumber,
-              warn.warningFlag, "stylishsync");
-    Services.console.logMessage(warn);
-    this._writeFile(warn);
-  },
-  
-  error: function(txt, showSrcInfo, stackLevel) {
-    var err = Components.classes["@mozilla.org/scripterror;1"]
-                        .createInstance(Components.interfaces.nsIScriptError);
-    if (showSrcInfo === undefined) showSrcInfo = true;
-    if (stackLevel  === undefined) stackLevel  = 0;
-    var info = showSrcInfo ? this.callerInfo(stackLevel+1) : new CallerInfo();
-    err.init(this.PFX + txt, info.filename, info.sourceLine, info.lineNumber, info.columnNumber,
-             err.errorFlag, "stylishsync");
-    Services.console.logMessage(err);
-    this._writeFile(err);
-  },
-  
-};
+Logging.PFX   = "stylishsync: ";
+Logging.DEBUG = Services.prefs.getBoolPref("extensions.stylishsync.debug");

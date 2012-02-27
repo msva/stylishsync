@@ -26,7 +26,7 @@ var StylishSync = {
     try {
       this.data = data;
       Services.strings.flushBundles();
-      this.strings = new SyncStringBundle();
+      this.strings = new SyncStringBundle(this.SYNC_ENGINE);
     
       if (reason == 1) Services.obs.addObserver(this, "weave:service:ready",  false);
       else             this.startEngine();
