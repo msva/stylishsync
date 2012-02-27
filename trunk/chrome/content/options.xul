@@ -7,7 +7,8 @@
 %stsoptionsDTD;
 ]>
   
-<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">  
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml">  
   <setting  id="stsenabled-set"    pref="services.sync.engine.stylishsync" type="bool" title="&stsenabled.label;"   tooltiptext="&stsenabled.tip;"/>
   <setting  id="stsimmediate-set"  pref="extensions.stylishsync.immediate" type="bool" title="&stsimmediate.label;" tooltiptext="&stsimmediate.tip;"/>
   <setting  id="stsstylish-set"    pref="extensions.stylishsync.stylish"   type="bool" title="&stsstylish.label;"   tooltiptext="&stsstylish.tip;"/>
@@ -18,4 +19,7 @@
     <button id="stsrestore-btn"    label="&stsrestorebtn.label;"/>
   </setting>
   <setting  id="stsdebug-set"      pref="extensions.stylishsync.debug"     type="bool" title="&stsdebug.label;"     tooltiptext="&stsdebug.tip;"/>
+  <setting  id="stssupport-set"    type="control" title="&stssupport.label;">
+    <button id="stshelp-btn"       label="&support.urltext;" oncommand="ownerDocument.defaultView.Services.wm.getMostRecentWindow('navigator:browser').openUILink('&support.url;', 'window')"/>
+  </setting>
 </vbox>
