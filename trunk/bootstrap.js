@@ -2,21 +2,25 @@
 
 "use strict";
 
+const RSC        = "stylishsync";
+const EXTMODULES = [ "stylishsync", "stsutils", "stsengine",
+                     "syncutils",   "logutils" ];
+
 function startup(data, reason)
 {
   setDefaultPrefs();
-  Components.utils.import("chrome://stylishsync/content/stylishsync.jsm");
+  Components.utils.import("chrome://"+RSC+"/content/stylishsync.jsm");
   StylishSync.startup(data, reason);
 }
 
 function shutdown(data, reason)
 {
-  Components.utils.import("chrome://stylishsync/content/stylishsync.jsm");
+  Components.utils.import("chrome://"+RSC+"/content/stylishsync.jsm");
   StylishSync.shutdown(data, reason);
   
-  Components.utils.unload("chrome://stylishsync/content/stylishsync.jsm");
-  Components.utils.unload("chrome://stylishsync/content/stsutils.jsm");
-  Components.utils.unload("chrome://stylishsync/content/stsengine.jsm");
+  EXTMODULES.forEach(function _unload(module) {
+    Components.utils.unload("chrome://"+RSC+"/content/"+module+".jsm");
+  });
 }
 
 function install(params, reason) {}

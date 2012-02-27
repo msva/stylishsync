@@ -295,7 +295,7 @@ function StylishSyncEngine() {
   try {
     Weave.SyncEngine.call(this, "StylishSync");
     this.svc     = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
-    this.strings = new SyncStringBundle();
+    this.strings = new SyncStringBundle(this.name);
     // HACK ALERT: this should be deferred value
     STYLISH_MODE_FOR_SYNC = this.svc.REGISTER_STYLE_ON_LOAD;
   } catch (exc) {
