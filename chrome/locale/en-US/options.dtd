@@ -14,3 +14,6 @@
 <!ENTITY stsautobak.tip      "Backup-styles will be saved in your profile folder">
 <!ENTITY stsstylish.label    "Synchronize Stylish settings">
 <!ENTITY stsstylish.tip      "Some of Stylish's own settings will be synchronized">
+<!ENTITY stssupport.label    "Support">
+<!ENTITY support.url         "https://code.google.com/p/stylishsync/wiki/README#Options">
+<!ENTITY support.urltext     "Online Help">

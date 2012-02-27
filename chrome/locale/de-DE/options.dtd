@@ -14,3 +14,6 @@
 <!ENTITY stsautobak.tip      "Stile werden im Profil-Ordner gesichert">
 <!ENTITY stsstylish.label    "Stylish-Einstellungen synchronisieren">
 <!ENTITY stsstylish.tip      "Einige Einstellungen von Stylish selbst werden mitsynchronisiert">
+<!ENTITY stssupport.label    "Support">
+<!ENTITY support.url         "https://code.google.com/p/stylishsync/wiki/README#Options">
+<!ENTITY support.urltext     "Online Hilfe (Englisch)">
