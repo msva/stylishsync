@@ -4,9 +4,10 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://services-sync/main.js");
-Components.utils.import("chrome://stylishsync/content/logutils.jsm");
 
 var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncError", "SyncStringBundle" ];
+
+var Logging = null;
 
 function SyncError(txt, level) {
   if (level === undefined) level = 0
@@ -36,6 +37,26 @@ SyncStringBundle.prototype = {
 };
 
 var SyncUtil = {
+  setLogging: function SU_setLogging(obj) {
+    Logging = obj;
+  },
+  
+  yield: function SU_yield(storeObj) {
+    if (storeObj) storeObj._sleep(0);
+    Services.tm.currentThread.processNextEvent(true);
+  },
+  
+  lockWeave: function SU_lockWeave(timeout) {
+    timeout = timeout || 0;
+    let start  = Date.now();
+    do {
+      let locked = Weave.Service.lock();
+      if (locked) return true;
+      this.yield();
+    } while (Date.now()-start < timeout);
+    return false;
+  },
+  
   assert: function SU_assert(cond, txt)
   {
     if (!cond)
@@ -142,3 +163,21 @@ var SyncUtil = {
 };
 
 
+var SimpleLogging = {
+  PFX:   "synclog: ",
+  DEBUG: false,
+  
+  log:   function SL_log(  txt) { Services.console.logStringMessage(this.PFX + txt); },
+  info:  function SL_info( txt) { this.log(txt); },
+  debug: function SL_debug(txt) { if (this.DEBUG) this.log("DEBUG: "+txt); },
+  warn:  function SL_warn( txt) { this.log("WARNING: "+txt); },
+  error: function SL_eror( txt) { this.log("ERROR: "  +txt); },
+  
+  logException: function SL_logException(exc) { Components.utils.reportError(exc); },
+  callerInfo:   function SL_callerInfo() {
+    try { this.undef() } catch (exc) { return { stack: exc.stack }; }
+    return {}; // shouldn't happen
+  }
+};
+
+Logging = SimpleLogging;

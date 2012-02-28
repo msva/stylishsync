@@ -18,9 +18,11 @@ CallerInfo.prototype = {
 }
 
 var Logging = {
-  PFX:        "sync log: ",
-  logfile:    null,
-  DEBUG:      false,
+  PFX:          "synclog: ",
+  CATEGORY:     "synclog",
+  LOGFILE_PREF: "invalid",
+  logfile:      null,
+  DEBUG:        false,
   
   callerInfo: function callerInfo(level) { // should
     if (!level) level = 0;
@@ -54,7 +56,7 @@ var Logging = {
   _writeFile: function(msg) {
     if (this.logname !== undefined && this.logfile == null) return; // failed before
     if (this.logfile == null) {
-      try         { this.logname = Services.prefs.getCharPref("extensions.stylishsync.logfile"); }
+      try         { this.logname = Services.prefs.getCharPref(this.LOGFILE_PREF); }
       catch (exc) { this.logname = null; }
       if (!this.logname) return;
       this.logfile = new FileUtils.File(this.logname);
@@ -66,7 +68,7 @@ var Logging = {
                                .createInstance(Components.interfaces.nsIConverterOutputStream);
       sstream.init(ostream, "UTF-8", 0, 0);
       let logmsg = "["+new Date().toISOString()+"] "+
-                   msg.toString().replace(/^stylishsync:\s*/,"");
+                   msg.toString().replace(this.PFX,"");
       sstream.writeString(logmsg+"\n"); ostream.flush();
       sstream.close();
     } catch (exc) { this.logname = null; this._logException(exc, null, false); }
@@ -84,7 +86,7 @@ var Logging = {
     excLog.init(this.PFX + txt + (exc.message || exc.toString()),
                 exc.filename || exc.fileName, exc.location ? exc.location.sourceLine : null,
                 exc.lineNumber || 0, exc.columnNumber || 0,
-                excLog.errorFlag || 0, "stylishsync");
+                excLog.errorFlag || 0, this.CATEGORY);
     Services.console.logMessage(excLog);
     if (toFileIfOpen) this._writeFile(excLog);
   },
@@ -103,7 +105,7 @@ var Logging = {
     if (stackLevel  === undefined) stackLevel  = 0;
     var info = showSrcInfo ? this.callerInfo(stackLevel+1) : new CallerInfo();
     warn.init(this.PFX + txt, info.filename, info.sourceLine, info.lineNumber, info.columnNumber,
-              warn.warningFlag, "stylishsync");
+              warn.warningFlag, this.CATEGORY);
     Services.console.logMessage(warn);
     this._writeFile(warn);
   },
@@ -115,7 +117,7 @@ var Logging = {
     if (stackLevel  === undefined) stackLevel  = 0;
     var info = showSrcInfo ? this.callerInfo(stackLevel+1) : new CallerInfo();
     err.init(this.PFX + txt, info.filename, info.sourceLine, info.lineNumber, info.columnNumber,
-             err.errorFlag, "stylishsync");
+             err.errorFlag, this.CATEGORY);
     Services.console.logMessage(err);
     this._writeFile(err);
   },
