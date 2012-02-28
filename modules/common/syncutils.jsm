@@ -71,10 +71,37 @@ var SyncUtil = {
    });
   },
   
+  reEscape: function SU_reEscape(str) {
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  },
+  
   arrayEqual: function SU_arrayEqual(l,r) {
     return (l==r) || !(l<r || l>r);
   },
 
+  makeBackupFile: function(bakdir, basename, ext, age) {
+    let now = new Date();
+    if (bakdir.exists()) { // otherwise, must be created by caller...
+      // Clean up old backups
+      let dir = bakdir.directoryEntries;
+      let bnpatt = this.reEscape(basename||"backup");
+      let expatt = this.reEscape(ext||".bak");
+      let patt   = new RegExp("^"+bnpatt+"-\\d{4}-\\d\\d-\\d\\d"+expatt);
+      
+      while (dir.hasMoreElements()) { // clean up old backups
+        let f = dir.getNext().QueryInterface(Components.interfaces.nsIFile);
+        if (patt.test(f.leafName)) {
+          if (now.getTime()-f.lastModifiedTime > age) {
+            f.remove(false); Logging.debug("removed backup: "+f.leafName);
+          }
+        }
+      }
+    }
+    let file = bakdir.clone();
+    file.append(now.toLocaleFormat(basename+"-%Y-%m-%d"+ext));
+    return file;        
+  },
+  
   loggedCatch: function SU_loggedCatch(proto) {
     return function SU_loggedWrapper() {
       try { return proto.apply(this, arguments); }
