@@ -4,7 +4,7 @@
 
 import sys, os, re, shutil, zipfile, glob, optparse, time
 
-DEFPROJ    = "stylishsync"
+DEFPROJ    = os.path.basename(os.path.dirname(__file__))
 
 ROOT_FILES = "chrome modules defaults chrome.manifest install.rdf bootstrap.js changelog.txt"
 OUTDIR     = "versions"
