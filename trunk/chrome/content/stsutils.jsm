@@ -221,5 +221,9 @@ var StylishBackup = {
 //*****************************************************************************
 //* Logging
 //*****************************************************************************
-Logging.PFX   = "stylishsync: ";
-Logging.DEBUG = Services.prefs.getBoolPref("extensions.stylishsync.debug");
+Logging.CATEGORY     = "stylishsync";
+Logging.PFX          = Logging.CATEGORY+": ";
+Logging.DEBUG        = Services.prefs.getBoolPref("extensions.stylishsync.debug");
+Logging.LOGFILE_PREF = "extensions.stylishsync.logfile";
+
+SyncUtil.setLogging(Logging);
