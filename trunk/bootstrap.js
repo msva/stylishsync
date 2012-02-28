@@ -3,8 +3,11 @@
 "use strict";
 
 const RSC        = "stylishsync";
-const EXTMODULES = [ "stylishsync", "stsutils", "stsengine",
-                     "syncutils",   "logutils" ];
+const CMN        = "stsmodules";
+
+const EXTMODULES = [ { rsc: RSC, mod: "stylishsync"}, { rsc: RSC, mod: "stsutils"}, 
+                     { rsc: RSC, mod: "stsengine"},
+                     { rsc: CMN, mod: "syncutils"},   { rsc: CMN, mod: "logutils"} ];
 
 function startup(data, reason)
 {
@@ -18,8 +21,8 @@ function shutdown(data, reason)
   Components.utils.import("chrome://"+RSC+"/content/stylishsync.jsm");
   StylishSync.shutdown(data, reason);
   
-  EXTMODULES.forEach(function _unload(module) {
-    Components.utils.unload("chrome://"+RSC+"/content/"+module+".jsm");
+  EXTMODULES.forEach(function _unload(mod) {
+    Components.utils.unload("chrome://"+mod.rsc+"/content/"+mod.mod+".jsm");
   });
 }
 
