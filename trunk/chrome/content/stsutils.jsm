@@ -64,24 +64,8 @@ var StylishBackup = {
         file = this.pickFile(sts, false);
         if (!file) return this.CANCELLED;
       } else if (!file) {
-        let now = new Date();
-        if (this.bakdir.exists()) { // otherwise, will be created later...
-          // Do automatic backups like places: once a day
-          let dir = this.bakdir.directoryEntries;
-          let age = Services.prefs.getIntPref("extensions.stylishsync.bakage") * 24 * 3600 * 1000;
-        
-          while (dir.hasMoreElements()) { // clean up old backups
-            let f = dir.getNext().QueryInterface(Components.interfaces.nsIFile);
-            if (/^stylishsync-\d{4}-\d\d-\d\d\.sqlite/.test(f.leafName)) {
-              if (now.getTime()-f.lastModifiedTime > age) {
-                f.remove(false); Logging.debug("removed backup: "+f.leafName);
-              }
-            }
-          }
-        }
-        file = this.bakdir.clone();
-        file.append(now.toLocaleFormat("stylishsync-%Y-%m-%d.sqlite"));
-        
+        let  maxAge = Services.prefs.getIntPref("extensions.stylishsync.bakage") * 24 * 3600 * 1000;
+        file = SyncUtil.makeBackupFile(this.bakdir, "stylishsync", ".sqlite", maxAge);
         if (file.exists()) return this.CANCELLED;
       }
       if (file) {
