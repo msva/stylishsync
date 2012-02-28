@@ -79,7 +79,8 @@ def main(argv=sys.argv[1:]):
       print "checking %s Syntax" % what,
       files = []
       for ext in exts:
-        for dirpat in [ "*", "chrome/*", "chrome/*/*", "modules/*", "modules/*/*" ]:
+        for dirpat in [ "*", "chrome/*",  "chrome/*/*",  "chrome/*/*/*",
+                             "modules/*", "modules/*/*", "modules/*/*/*" ]:
           files += glob.glob(os.path.join(inpdir, dirpat+ext))
       for fn in files:
         print ".", ; sys.stdout.flush()

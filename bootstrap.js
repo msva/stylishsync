@@ -7,7 +7,8 @@ const CMN        = "stsmodules";
 
 const EXTMODULES = [ { rsc: RSC, mod: "stylishsync"}, { rsc: RSC, mod: "stsutils"}, 
                      { rsc: RSC, mod: "stsengine"},
-                     { rsc: CMN, mod: "syncutils"},   { rsc: CMN, mod: "logutils"} ];
+                     { rsc: CMN, mod: "common/syncutils"},
+                     { rsc: CMN, mod: "common/logutils"} ];
 
 function startup(data, reason)
 {
