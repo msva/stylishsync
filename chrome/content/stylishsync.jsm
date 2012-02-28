@@ -3,8 +3,8 @@
 "use strict";
 
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://stylishsync/content/syncutils.jsm");
-Components.utils.import("chrome://stylishsync/content/logutils.jsm");
+Components.utils.import("chrome://stsmodules/content/common/syncutils.jsm");
+Components.utils.import("chrome://stsmodules/content/common/logutils.jsm");
 Components.utils.import("chrome://stylishsync/content/stsutils.jsm");
 Components.utils.import("chrome://stylishsync/content/stsengine.jsm");
 Components.utils.import("resource://services-sync/main.js");

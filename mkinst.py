@@ -6,7 +6,7 @@ import sys, os, re, shutil, zipfile, glob, optparse, time
 
 DEFPROJ    = "stylishsync"
 
-ROOT_FILES = "chrome defaults chrome.manifest install.rdf bootstrap.js changelog.txt"
+ROOT_FILES = "chrome modules defaults chrome.manifest install.rdf bootstrap.js changelog.txt"
 OUTDIR     = "versions"
 
 JAR     = os.environ.get("JAR",      "jar")
@@ -79,7 +79,7 @@ def main(argv=sys.argv[1:]):
       print "checking %s Syntax" % what,
       files = []
       for ext in exts:
-        for dirpat in [ "*", "chrome/*", "chrome/*/*"]:
+        for dirpat in [ "*", "chrome/*", "chrome/*/*", "modules/*", "modules/*/*" ]:
           files += glob.glob(os.path.join(inpdir, dirpat+ext))
       for fn in files:
         print ".", ; sys.stdout.flush()

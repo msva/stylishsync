@@ -7,8 +7,8 @@ Components.utils.import("resource://gre/modules/FileUtils.jsm");
 Components.utils.import("resource://gre/modules/DownloadLastDir.jsm");  
 Components.utils.import("resource://gre/modules/PopupNotifications.jsm");
 Components.utils.import("resource://services-sync/main.js");
-Components.utils.import("chrome://stylishsync/content/syncutils.jsm");
-Components.utils.import("chrome://stylishsync/content/logutils.jsm");
+Components.utils.import("chrome://stsmodules/content/common/syncutils.jsm");
+Components.utils.import("chrome://stsmodules/content/common/logutils.jsm");
 
 var EXPORTED_SYMBOLS = [ "SyncError", "StylishBackup", "SyncStringBundle",
                          "StsUtil",  "Logging" ];
