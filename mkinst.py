@@ -9,12 +9,13 @@ DEFPROJ    = os.path.basename(os.path.dirname(__file__))
 ROOT_FILES = "chrome modules defaults chrome.manifest install.rdf bootstrap.js changelog.txt"
 OUTDIR     = "versions"
 
-JAR     = os.environ.get("JAR",      "jar")
-SHA1SUM = os.environ.get("SHA1SUM",  "sha1sum")
-SVN     = os.environ.get("SVN",      "svn")
-JSCHK   = os.environ.get("JSCHK",    'jsshell -s -C -e options(\'werror\')')
-XULLINT = os.environ.get("XULLINT",  "xullint.py")
-AMOEXIT = os.environ.get("AMOEXIT",  "amoexit.py")
+JAR       = os.environ.get("JAR",       "jar")
+SHA1SUM   = os.environ.get("SHA1SUM",   "sha1sum")
+SVN       = os.environ.get("SVN",       "svn")
+JSCHK     = os.environ.get("JSCHK",     'jsshell -s -C -e options(\'werror\')')
+XULLINT   = os.environ.get("XULLINT",   "xullint.py")
+AMOEXIT   = os.environ.get("AMOEXIT",   "amoexit.py")
+BUILDEXIT = os.environ.get("BUILDEXIT", "buildexit.py")
 
 XMLLINT_OPTS = "--nodefdtd --noout"
 LOCALES      = [ "en-US", "de-DE"]
@@ -53,6 +54,10 @@ def main(argv=sys.argv[1:]):
   inpdir = svnbdir
   
   try:
+    if os.path.isfile(BUILDEXIT):
+      glbl = globals(); glbl.update(locals())
+      execfile(BUILDEXIT, glbl, {})
+    
     f = file(os.path.join(inpdir, "install.rdf")); inst = f.read(); f.close()
     m = re.search(r'em:version="'+VERPATT+'"', inst)
     if m is None:
