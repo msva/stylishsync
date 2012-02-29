@@ -3,6 +3,7 @@
 "use strict";
 
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://services-sync/async.js");
 Components.utils.import("resource://services-sync/main.js");
 
 var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncError", "SyncStringBundle" ];
@@ -41,9 +42,16 @@ var SyncUtil = {
     Logging = obj;
   },
   
+  sleep: function SU_sleep(time) {
+    let cb = Async.makeSyncCallback();
+    let timer = Components.classes["@mozilla.org/timer;1"]
+                          .createInstance(Components.interfaces.nsITimer)
+    timer.initWithCallback(cb, time, Components.interfaces.nsITimer.TYPE_ONE_SHOT);
+    Async.waitForSyncCallback(cb);
+  },
+
   yield: function SU_yield(storeObj) {
-    if (storeObj) storeObj._sleep(0);
-    Services.tm.currentThread.processNextEvent(true);
+    this.sleep(0);
   },
   
   lockWeave: function SU_lockWeave(timeout) {
