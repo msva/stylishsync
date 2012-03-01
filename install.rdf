@@ -6,7 +6,7 @@
     <em:type>2</em:type>
     <em:bootstrap>true</em:bootstrap>
     <em:name>Stylish Sync</em:name>
-    <em:version>0.1.0-dev</em:version>
+    <em:version>0.1.2pre1-dev</em:version>
     <em:creator>Herrminator</em:creator><!-- stylishsync.t0s@gishpuppy.com -->
     <em:contributor></em:contributor>
     <em:description>Sync engine for Stylish.</em:description>
