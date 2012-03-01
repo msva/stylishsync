@@ -167,33 +167,40 @@ var SyncUtil = {
                                       choices.length, choices, selected);
 
       if      (!ok && cancelChoice >= 0) selected.value = cancelChoice;
-      else if (!ok) return;
+      else if (!ok) return true;
 
       eng.enabled = (selected.value != disableChoice);
 
-      if (!eng.enabled) { Logging.debug("Disabling sync"); return; }
+      if (!eng.enabled) { Logging.debug("Disabling sync"); return true; }
 
-      switch (selected.value) {
-        case 0:
-          Logging.debug("Merging data (waiting for sync)");
-          Weave.Service.resetClient([eng.name]);
-          break;
-        case 1:
-          Logging.debug("Wiping client");
-          Weave.Service.wipeClient([eng.name]);
-          break;
-        case 2:
-          Logging.debug("Wiping server");
-          Weave.Service.resetClient([eng.name]);
-          Weave.Service.wipeServer([eng.name]);
-          Weave.Clients.sendCommand("wipeEngine", [eng.name]);
-          break;
+      try {
+        switch (selected.value) {
+          case 0:
+            Logging.debug("Merging data (waiting for sync)");
+            Weave.Service.resetClient([eng.name]);
+            break;
+          case 1:
+            Logging.debug("Wiping client");
+            Weave.Service.wipeClient([eng.name]);
+            break;
+          case 2:
+            Logging.debug("Wiping server");
+            Weave.Service.resetClient([eng.name]);
+            Weave.Service.wipeServer([eng.name]);
+            Weave.Clients.sendCommand("wipeEngine", [eng.name]);
+            break;
+        }
+      } catch (exc) {
+        Logging.logException(exc);
+        Services.prompt.alert(parent, strings.get(engine), strings.get("syncError"));
+        return false;
       }
       if (eng.trackerInstance) // try to sync as soon as possible
         eng.trackerInstance.score += Weave.SCORE_INCREMENT_XLARGE;
     } finally {
       if (!wasLocked) Weave.Service.unlock();
     }
+    return true;
   },
 };
 
