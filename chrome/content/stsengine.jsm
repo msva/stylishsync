@@ -4,6 +4,7 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://stylishsync/content/stsutils.jsm");
+Components.utils.import("chrome://stsmodules/content/common/syncutils.jsm");
 Components.utils.import("resource://services-sync/engines.js");
 Components.utils.import("resource://services-sync/record.js");
 Components.utils.import("resource://services-sync/util.js");
@@ -129,6 +130,8 @@ StylishSyncRecord.prototype = {
   __proto__: CryptoWrapper.prototype,
   _logName: "Record.StylishSync",
   
+  // FIXME: see syncutils.jsm
+  decrypt: function FIX_decrypt() SyncUtil.fixDecryptBug.apply(this, arguments),
 };
 
 Utils.deferGetSet(StylishSyncRecord, "cleartext", STYLE_PROPS.concat(["meta"]));
