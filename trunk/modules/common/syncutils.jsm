@@ -4,6 +4,7 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://services-sync/async.js");
+Components.utils.import("resource://services-sync/record.js");
 Components.utils.import("resource://services-sync/main.js");
 
 var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncError", "SyncStringBundle" ];
@@ -141,10 +142,12 @@ var SyncUtil = {
     let wasLocked = Weave.Service.locked;
     if (!wasLocked) Weave.Service.lock();
     
+    let strings          = new SyncStringBundle(engine);
+    let deferredSyncCall = null;
+
     try {
       startPrompt      = startPrompt || "firstStartPrompt";
       mergePrompt      = mergePrompt || "mergePrompt";
-      let strings      = new SyncStringBundle(engine);
       let cancelPrompt = " ("+strings.get("sameAsCancel")+")";
       let cancelChoice = -1;
       
@@ -173,35 +176,56 @@ var SyncUtil = {
 
       if (!eng.enabled) { Logging.debug("Disabling sync"); return true; }
 
-      try {
-        switch (selected.value) {
-          case 0:
+      switch (selected.value) {
+        case 0: deferredSyncCall = function _resetClient() {
             Logging.debug("Merging data (waiting for sync)");
             Weave.Service.resetClient([eng.name]);
-            break;
-          case 1:
+          }; break;
+        case 1: deferredSyncCall = function _wipeClient() {
             Logging.debug("Wiping client");
             Weave.Service.wipeClient([eng.name]);
-            break;
-          case 2:
+          }; break;
+        case 2: deferredSyncCall = function _wipeServer() {
             Logging.debug("Wiping server");
             Weave.Service.resetClient([eng.name]);
             Weave.Service.wipeServer([eng.name]);
             Weave.Clients.sendCommand("wipeEngine", [eng.name]);
-            break;
-        }
+          }; break;
+      }
+    } finally {
+      if (!wasLocked) Weave.Service.unlock();
+    }
+    // Call sync service after unlocking it
+    if (deferredSyncCall) {
+      try {
+        SyncUtil.yield();
+
+        if (eng.trackerInstance) // try to sync as soon as possible
+          eng.trackerInstance.score += Weave.SCORE_INCREMENT_XLARGE;
+
+        deferredSyncCall();
+
       } catch (exc) {
         Logging.logException(exc);
         Services.prompt.alert(parent, strings.get(engine), strings.get("syncError"));
         return false;
       }
-      if (eng.trackerInstance) // try to sync as soon as possible
-        eng.trackerInstance.score += Weave.SCORE_INCREMENT_XLARGE;
-    } finally {
-      if (!wasLocked) Weave.Service.unlock();
     }
     return true;
   },
+
+  // Bind this to a Record object!
+  fixDecryptBug: function ___FIXME___(keyBundle) { 
+    // FIXME: seems to be a bug in sync. On startup we get called from
+    // canDecrypt() without collection or keyBundle)
+    if (!this.collection && !keyBundle) {
+      try { throw new SyncError("Trace!"); }
+      catch (exc) { Logging.debug("FIXME: No collection or keyBundle: "+exc.stack); }
+      return;
+    }
+    CryptoWrapper.prototype.decrypt.call(this, keyBundle);
+  }
+
 };
 
 
