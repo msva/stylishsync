@@ -38,7 +38,7 @@ const STYLE_PROPS = [
 
 const STYLE_META = [ "url", "url-prefix", "domain", "regexp", "type", "tag" ];
 const STYLISH_MODE_SYNCING  = 1024;
-var   STYLISH_MODE_FOR_SYNC = 4; // REGISTER_STYLE_ON_LOAD: we don't know if stylish is already loaded, so fix it later
+var   STYLISH_MODE_FOR_SYNC = 0; // not: REGISTER_STYLE_ON_LOAD: we don't know if stylish is already loaded, so fix it later
                                  // HACK ALERT: we're fixing this in the engine's constructor! Should be a deferred value!
                                  // assume values present, not: this.svc.CALCULATE_META
 
@@ -49,14 +49,17 @@ const StylishConst = {
   STYLISH_MODE_FOR_SYNC: STYLISH_MODE_FOR_SYNC
 };
 
-function StyleWrapper(guid, styleobj) {
+function StyleWrapper(guid, styleobj, mode) {
   this.svc   = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
   this.guid  = guid;
   this.style = null;
   if (guid) {
-    let styles = this.svc.findByMeta("syncguid", guid, STYLISH_MODE_FOR_SYNC, {});
-    if (styles.length != 0) assert(styles.length == 1);
-    this.style = styles[0];
+    mode       = (typeof mode == "number") ? mode : STYLISH_MODE_FOR_SYNC;
+    let styles = this.svc.findByMeta("syncguid", guid, mode, {});
+    if (styles.length != 0) { 
+      assert(styles.length == 1);
+      this.style = styles[0];
+    }
   } else if (styleobj) {
     this.guid  = Utils.makeGUID();
     this.style = styleobj;
@@ -71,7 +74,7 @@ function StyleWrapper(guid, styleobj) {
         this.guid = m[0];
     }
   }
-  if (!this.style) {
+  if (!this.style) { // empty/deleted
     this.style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
     this.style.mode = 0; // assume we've got all values
     this.style.init(null, null, null, null, null, "", false, null);
@@ -198,12 +201,13 @@ StylishSyncStore.prototype = {
   },
   
   create: function STS_create(rec) {
-    return this.update(rec);
+    return this.update(rec, true);
   },
   
-  update: function STS_update(rec) {
+  update: function STS_update(rec, isNew) {
     Logging.debug("update: "+dbgFmt(rec.cleartext));
-    let wrap = new StyleWrapper(rec.id);
+    let mode = STYLISH_MODE_FOR_SYNC | this.svc.REGISTER_STYLE_ON_CHANGE;
+    let wrap = new StyleWrapper(rec.id, null, mode);
     wrap.fromRecord(rec);
     if (wrap.style.name != null)
       wrap.save();
@@ -300,7 +304,7 @@ function StylishSyncEngine() {
     this.svc     = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
     this.strings = new SyncStringBundle(this.name);
     // HACK ALERT: this should be deferred value
-    STYLISH_MODE_FOR_SYNC = this.svc.REGISTER_STYLE_ON_LOAD;
+    STYLISH_MODE_FOR_SYNC = 0; // NOT: this.svc.REGISTER_STYLE_ON_LOAD registers again!;
   } catch (exc) {
     Logging.logException(exc);
     throw(exc);
