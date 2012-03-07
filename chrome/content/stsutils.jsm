@@ -132,7 +132,7 @@ var StylishBackup = {
             style.save();
           lastId = row.id;
           style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
-          style.mode = StylishConst.STYLISH_MODE_SYNCING | StylishConst.STYLISH_MODE_FOR_SYNC;
+          style.mode = StylishConst.STYLISH_MODE_SYNCING | stylish.REGISTER_STYLE_ON_LOAD | stylish.REGISTER_STYLE_ON_CHANGE;
           style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
                      row.name, row.code,  row.enabled,   row.originalCode); 
         }
