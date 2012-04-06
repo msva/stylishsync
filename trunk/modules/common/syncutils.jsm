@@ -7,7 +7,7 @@ Components.utils.import("resource://services-sync/async.js");
 Components.utils.import("resource://services-sync/record.js");
 Components.utils.import("resource://services-sync/main.js");
 
-var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncError", "SyncStringBundle" ];
+var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncUIAdder", "SyncError", "SyncStringBundle" ];
 
 var Logging = null;
 
@@ -136,6 +136,11 @@ var SyncUtil = {
   
   // Maybe we can re-use this if we write another sync engine :)
   promptAndSync: function SU_promptAndSync(parent, engine, startPrompt, mergePrompt) {
+    if (!Weave.Status.service != Weave.STATUS_OK) {
+      Logging.debug("Sync is not active");
+      return false;
+    }
+
     let eng = Weave.Engines.get(engine);
     SyncUtil.assert(!!eng, "Engine '"+engine+"' not registered");
     
@@ -227,6 +232,179 @@ var SyncUtil = {
   }
 
 };
+
+// Manually add preferences to sync UI
+// borrowed from https://addons.mozilla.org/en-US/seamonkey/addon/add-ons-sync-prefs/
+
+function SyncUIAdder(engID, engName) {
+  this.engID   = engID;
+  this.engName = engName;
+  this.init();
+}
+
+SyncUIAdder.prototype = {
+  PREF_WINDOW_TYPES:  { "mozilla:preferences": "SeaMonkey",
+                        "Browser:Preferences": "Firefox" },
+  SETUP_WINDOW_TYPES: { "Weave:AccountSetup":  "all" },
+  
+  paneload: null,
+  
+  // Implement window listener
+  onOpenWindow: function SUI_onOpenWindow(win) {
+    let self = this;
+    // Wait for the window to finish loading
+    let domWin = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                    .getInterface(Components.interfaces.nsIDOMWindow);
+
+    domWin.addEventListener("load", function SUI_domWindowLoad() {
+      domWin.removeEventListener("load", SUI_domWindowLoad, false);
+      let wintype = domWin.document.documentElement.getAttribute("windowtype");
+
+      if (self.PREF_WINDOW_TYPES[wintype])
+        self.addPrefs(domWin);
+      else if (self.SETUP_WINDOW_TYPES[wintype])
+        self.addToWizard(domWin);
+
+    }, false);
+  },
+  onCloseWindow: function SUI_onCloseWindow(win) { },
+  onWindowTitleChange: function SUI_onWindowTitleChange(win, title) { },
+  
+  addPrefs: function SUI_addPrefs(win) {
+    let self = this;
+    if (!win) return;
+    
+    let wintype  = win.document.documentElement.getAttribute("windowtype");
+    let syncpane = win.document.getElementById(this.PREF_WINDOW_TYPES[wintype] == "SeaMonkey" ?
+                                               "sync_pane" : "paneSync");
+    if (!syncpane) return;
+
+    if (syncpane.firstChild) { // pane is set up
+      self.addToSyncPane(win, syncpane);
+    } else {
+      this.paneload = function SUI_paneload() {
+        syncpane.removeEventListener("paneload", SUI_paneload, false);
+        self.addToSyncPane(win, syncpane);
+      }
+      syncpane.addEventListener("paneload", this.paneload, false);
+    }
+  },
+  
+  removePrefs: function SUI_removePrefs(win) {
+    if (!win) return;
+    let doc = win.document;
+    let wintype  = doc.documentElement.getAttribute("windowtype");
+    let syncpane = doc.getElementById(this.PREF_WINDOW_TYPES[wintype] == "SeaMonkey" ?
+                                      "sync_pane" : "paneSync");
+    if (!syncpane) return;
+    
+    if (this.paneload) syncpane.removeEventListener("paneload", this.paneload, false);
+    if (syncpane.firstChild) { // pane is set up
+      let engList = doc.getElementById("syncEnginesList");
+      let item    = doc.getElementById("SUI_"+this.engID);
+      engList.removeChild(item);
+      let pref = doc.getElementById("engine."+this.engID);
+      if (pref)  pref.setAttribute("readonly", true);
+    }
+  },
+  
+  addToSyncPane: function SUI_addToSyncPane(win, syncpane) {
+    Logging.debug("Adding preferences to option dialog");
+    let doc      = win.document;
+    let prefs    = syncpane.getElementsByTagName("preferences")[0];
+    let pref     = doc.getElementById("engine."+this.engID);
+    if (pref) {
+      pref.removeAttribute("readonly");
+    } else {
+      pref = doc.createElement("preference");
+      pref.setAttribute("id",   "engine."+this.engID);
+      pref.setAttribute("name", "services.sync.engine."+this.engID);
+      pref.setAttribute("type", "bool");
+      prefs.appendChild(pref);
+    }
+    let engList = doc.getElementById("syncEnginesList");
+    let wintype = doc.documentElement.getAttribute("windowtype");
+    let item    = null;
+    let parent  = null;
+
+    if (this.PREF_WINDOW_TYPES[wintype] == "SeaMonkey") {
+      item = doc.createElement("listitem");
+      item.setAttribute("id",    "SUI_"+this.engID);
+      item.setAttribute("type",  "checkbox");
+    } else {
+      parent = doc.createElement("richlistitem");
+      parent.setAttribute("id",    "SUI_"+this.engID);
+      item = doc.createElement("checkbox");
+      parent.appendChild(item);
+    }
+    item.setAttribute("label", this.engName);
+    item.setAttribute("preference", "engine."+this.engID);
+    item.setAttribute("checked",    Services.prefs.getBoolPref("services.sync.engine."+this.engID));
+    engList.appendChild(parent ? parent : item);
+  },
+  
+  addToWizard: function SUI_addToWizard(win) {
+    let self = this;
+    Logging.debug("Adding preferences to setup dialog");
+    let doc      = win.document;
+    // enabled preference
+    let item     = doc.createElement("checkbox");
+    item.setAttribute("id",    "engine."+this.engID);
+    item.setAttribute("label", this.engName);
+    item.setAttribute("checked",    Services.prefs.getBoolPref("services.sync.engine."+this.engID));
+    let after    = doc.getElementById("engine.tabs");
+    after.parentNode.appendChild(item);
+    item.addEventListener("command", function SUI_wizardPref() {
+      Weave.Svc.Prefs.set("engine."+self.engID, item.getAttribute("checked") == "true");
+    }, false);
+    // wipe list
+    let dlist = doc.getElementById("dataList");
+    let label = doc.createElement("label");
+    label.setAttribute("id",    this.engID+"Wipe");
+    label.setAttribute("value", this.engName);
+    label.setAttribute("class", dlist.firstChild.getAttribute("class"));
+    dlist.appendChild(label);
+  },
+  
+  removeFromWizard: function SUI_removeFromWizard(win) {
+    let elt = win.document.getElementById("engine."+this.engID);
+    elt.parentNode.removeChild(elt);
+    elt = win.document.getElementById(this.engID+"Wipe");
+    elt.parentNode.removeChild(elt);
+  },
+  
+  init: function SUI_startupUI() {
+    try {
+      for (let type in this.PREF_WINDOW_TYPES) {
+        let enm = Services.wm.getEnumerator(type);
+        while (enm.hasMoreElements()) this.addPrefs(enm.getNext());
+      }
+      for (let type in this.SETUP_WINDOW_TYPES) {
+        let enm = Services.wm.getEnumerator(type);
+        while (enm.hasMoreElements()) this.addToWizard(enm.getNext());
+      }
+      Services.wm.addListener(this);
+    } catch (exc) {
+      Logging.logException(exc);
+    }
+  },
+  
+  close: function SUI_shutdownUI() {
+    try {
+      Services.wm.removeListener(this);
+      for (let type in this.PREF_WINDOW_TYPES) {
+        let enm = Services.wm.getEnumerator(type);
+        while (enm.hasMoreElements()) this.removePrefs(enm.getNext());
+      }
+      for (let type in this.SETUP_WINDOW_TYPES) {
+        let enm = Services.wm.getEnumerator(type);
+        while (enm.hasMoreElements()) this.removeFromWizard(enm.getNext());
+      }
+    } catch (exc) {
+      Logging.logException(exc);
+    }
+  },
+}
 
 
 var SimpleLogging = {
