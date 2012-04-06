@@ -10,6 +10,7 @@ v0.1.2:
 - Check for sync service OK before prompting
 - Styles sometimes didn't register after sync or restore
 - Work around what seems to be bug in sync's decrypt test
+- Fix a type that caused manual reset to fail
 
 v0.1.1pre1:
 
