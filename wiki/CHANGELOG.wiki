@@ -13,12 +13,15 @@ In case somebody's wondering why I'm using HTML-markup: I want to copy this
 page to and from the AMO release notes.
 </wiki:comment>
 
-=== v0.1.2 (unreleased) ===
- <li>Keep version number in 'sync' with our sister project, [https://code.google.com/p/reqpolsync/ reqpolsync].</li>
-
-=== v0.1.1 (unreleased) ===
- <li>Added help button to options.</li>
-
+=== v0.1.2 ===
+ <li>Add <em>Stylish Sync</em> to standard sync set-up and options.</li>
+ <li>Fix a bug where styles wouldn't show after syncing.</li>
+ <li>Add help button to options.</li>
+ <li>Work around a little bug in Mozillas sync.</li>
+ <li>Minor bug fixes</li>
+ <li>Internal: Fix DB-file access in Gecko 14 after landing of bug 682360</li>
+ <li>Internal: refactor to use synergies with <a href="https://addons.mozilla.org/en-US/addon/reqpolsync/">RequestPolicy Sync</a>.</li>
+ 
 === v0.1.0 ===
  <li>Added backup and restore facility with automatic daily backups.</li>
  <li>Added sync reset facility (like Mozilla's engines).</li>

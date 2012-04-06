@@ -1,0 +1,52 @@
+#summary AMO Backup
+#labels Deprecated
+<wiki:toc max_depth="3" />
+
+====== File $Id$ ======
+
+= Edit Listing =
+== Basic Information ==
+==== Summary ====
+Sync engine for Stylish with backup / restore facility.
+
+== Images ==
+
+== Add-on Details ==
+Use the Mozilla Sync engine for synchronizing <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a> user styles between computers and browsers.
+
+<b>DISCLAIMER</b>
+Before installing, please back up your <code>stylish.sqlite</code>-file that can be found in your <a href="http://kb.mozillazine.org/Profile_folder">profile folder</a>!
+This add-on is not affiliated with nor endorsed by the authors of <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a>. As such, it might stop working with any new version!
+
+==== Homepage ====
+
+== Support Information ==
+stylishsync.t0s@gishpuppy.com
+https://code.google.com/p/stylishsync/wiki/README
+
+== Technical Details ==
+Unfortunately, <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a> doesn't allow to synchronize its data with Mozilla's sync service.
+
+This extension adds the missing functionality.
+
+==== Required Add-ons ====
+Stylish
+
+= Authors and Licences =
+== Privacy Policy ==
+This extension uploads Stylishes user styles to the Mozilla sync server.
+
+As with all Mozilla sync data, all items are uploaded in encrypted form and can only be decrypted by the users browser.
+
+<strong>Please Note: This software is still in it's beta testing phase and COMES AS IS! - <a href="http://code.google.com/p/stylishsync/wiki/README#Disclaimer">DISCLAIMER</a>
+If you're scared sh*tless now, don't use it!
+</strong>
+
+= Developer Profile =
+
+== Why did you make this add-on ==
+
+== Whats next for this addon ==
+
+== Notes for reviewers ==
+= v0.1.2 =
