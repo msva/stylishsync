@@ -1,5 +1,27 @@
 Current svn: $Id$
 
+v0.1.2pre3:
+
+- Fix DB-file access in Gecko 14 after landing of bug 682360
+
+v0.1.2pre2:
+
+- Styles sometimes didn't register after sync or restore
+
+v0.1.2pre1:
+
++ Catch sync errors in promptAndSync
+* Call Weave service functions _after_ unlocking the service in promptAndSync
+* Keep version numbers in 'sync' with reqpolsync
+- Work around what seems to be bug in sync's decrypt test
+
+v0.1.1pre1:
+
++ Add help button to options
+- Copy-paste typo in stsutils.jsm
+* Factor out common sync utilities / logging / etc
+
+
 v0.1.0:
 
 * Upload to AMO
