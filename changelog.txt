@@ -1,5 +1,10 @@
 Current svn: $Id$
 
+v0.1.2pre4:
+
++ Add preferences to standard sync UI
+- Check for sync service OK before prompting
+
 v0.1.2pre3:
 
 - Fix DB-file access in Gecko 14 after landing of bug 682360
