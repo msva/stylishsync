@@ -69,11 +69,15 @@ var StylishBackup = {
         if (file.exists()) return this.CANCELLED;
       }
       if (file) {
-        let data = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+        // FIXME: see below.
+        // let data   = Components.classes["@userstyles.org/stylish-data-source;1"].createInstance(Components.interfaces.stylishDataSource);
+        // let dbfile = data.getFile();
+        let dbfile = this.getStylishDB();
+
         if (!file.parent.exists())  file.parent.create(1, 0x700);
         if (file.exists())          file.remove(false);
 
-        Services.storage.backupDatabaseFile(data.getFile(), file.leafName, file.parent);
+        Services.storage.backupDatabaseFile(dbfile, file.leafName, file.parent);
         
         // remove GUIDs from backup
         conn = Services.storage.openDatabase(file);
@@ -90,6 +94,14 @@ var StylishBackup = {
       if (conn) conn.close();
     }
     return this.FAILED;
+  },
+  
+  // FIXME: StylishDataSource.getFile() doesn't work anymore since the
+  // landing of https://bugzilla.mozilla.org/show_bug.cgi?id=682360
+  getStylishDB: function() { // emulate StylishDataSource.getFile() 
+    let path = Services.prefs.getCharPref("extensions.stylish.dbFile");
+    let file = path ? new FileUtils.File(path) : FileUtils.getFile("ProfD", [ "stylish.sqlite" ]);
+    return file;
   },
   
   restore: function STB_restore(sts, file) {
