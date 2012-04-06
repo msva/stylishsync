@@ -136,7 +136,7 @@ var SyncUtil = {
   
   // Maybe we can re-use this if we write another sync engine :)
   promptAndSync: function SU_promptAndSync(parent, engine, startPrompt, mergePrompt) {
-    if (!Weave.Status.service != Weave.STATUS_OK) {
+    if (Weave.Status.service != Weave.STATUS_OK) {
       Logging.debug("Sync is not active");
       return false;
     }
