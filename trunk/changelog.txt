@@ -1,5 +1,13 @@
 Current svn: $Id$
 
+v0.1.3pre2:
+
+- Use services-common/async.js for Gecko >= 14 and make it available in SyncUtils
+
+v0.1.3pre1:
+
+- Bump version to push developer chemspill fix
+
 v0.1.2:
 
 + Add preferences to standard sync UI
