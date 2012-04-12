@@ -3,9 +3,10 @@
 "use strict";
 
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://services-sync/async.js");
 Components.utils.import("resource://services-sync/record.js");
 Components.utils.import("resource://services-sync/main.js");
+try         { Components.utils.import("resource://services-common/async.js"); }
+catch (exc) { Components.utils.import("resource://services-sync/async.js"); } // Compatibility with Gecko < 14
 
 var EXPORTED_SYMBOLS = [ "SyncUtil", "SyncUIAdder", "SyncError", "SyncStringBundle" ];
 
@@ -39,6 +40,8 @@ SyncStringBundle.prototype = {
 };
 
 var SyncUtil = {
+  Async: Async,
+
   setLogging: function SU_setLogging(obj) {
     Logging = obj;
   },
