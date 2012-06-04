@@ -1,5 +1,14 @@
 Current svn: $Id$
 
+v0.1.3:
+
+* Upload to AMO
+* Bump version
+
+v0.1.3pre3:
+
+* Use stack from Error-class instead of throwing an exception in Logging
+
 v0.1.3pre2:
 
 - Use services-common/async.js for Gecko >= 14 and make it available in SyncUtils
@@ -7,6 +16,7 @@ v0.1.3pre2:
 v0.1.3pre1:
 
 - Bump version to push developer chemspill fix
+
 
 v0.1.2:
 
