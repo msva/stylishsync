@@ -15,8 +15,9 @@ Sync engine for Stylish with backup / restore facility.
 Use the Mozilla Sync engine for synchronizing <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a> user styles between computers and browsers.
 
 <b>DISCLAIMER</b>
-Before installing, please back up your <code>stylish.sqlite</code>-file that can be found in your <a href="http://kb.mozillazine.org/Profile_folder">profile folder</a>!
 This add-on is not affiliated with nor endorsed by the authors of <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a>. As such, it might stop working with any new version!
+
+By default Stylish Sync creates daily backups of your Stylish database in your profile folder. If you find missing styles try to restore a previous version and let me know!
 
 ==== Homepage ====
 
