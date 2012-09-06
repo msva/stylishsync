@@ -1,5 +1,13 @@
 Current svn: $Id$
 
+v0.1.4pre2:
+
+- Fix compatibility with Stylish 1.3
+
+v0.1.4pre1:
+
+* Use jsshell from Gecko 15 for syntax check
+
 v0.1.3:
 
 * Upload to AMO
