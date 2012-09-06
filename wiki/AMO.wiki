@@ -17,7 +17,13 @@ Use the Mozilla Sync engine for synchronizing <a href="https://addons.mozilla.or
 <b>DISCLAIMER</b>
 This add-on is not affiliated with nor endorsed by the authors of <a href="https://addons.mozilla.org/en-US/addon/stylish/">Stylish</a>. As such, it might stop working with any new version!
 
-By default Stylish Sync creates daily backups of your Stylish database in your profile folder. If you find missing styles try to restore a previous version and let me know!
+By default Stylish Sync creates daily backups of your Stylish database in your <a href="http://kb.mozillazine.org/Profile_folder">profile folder</a>. If you find missing styles try to restore a previous version and let me know!
+
+<b>KNOWN ISSUES</b>
+<ul>
+<li>At the moment, Stylish Sync 0.1.3 <b>is not compatible</b> with Stylish <b>1.3</b>, due to an internal interface change. If you need sync, please install <a href="https://addons.mozilla.org/en-US/seamonkey/addon/stylish/versions/?page=1#version-1.2.6">Stylish 1.2.6</a> until this is fixed. If you're the daring kind, you may also switch to the <a href="https://addons.mozilla.org/en-US/addon/stylishsync/#beta-channel">Development Channel</a> below, where this issue should be fixed.</li>
+<li>There was a known incompatibility with Firefox 14 and SeaMonkey 2.11 or higher. Please install at least version 0.1.3 of this add-on (from https://addons.mozilla.org/en-US/seamonkey/addon/stylishsync/versions/ ).</li>
+</ul>
 
 ==== Homepage ====
 

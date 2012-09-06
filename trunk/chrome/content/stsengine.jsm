@@ -77,7 +77,10 @@ function StyleWrapper(guid, styleobj, mode) {
   if (!this.style) { // empty/deleted
     this.style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
     this.style.mode = 0; // assume we've got all values
-    this.style.init(null, null, null, null, null, "", false, null);
+    if (typeof this.style.applyBackgroundUpdates  != "undefined") // Stylish >= v1.3
+      this.style.init(null, null, null, null, null, "", false, null, null);
+    else
+      this.style.init(null, null, null, null, null, "", false, null);
     this.style.addMeta("syncguid", this.guid);
   }
   this.id   = this.style.id;
