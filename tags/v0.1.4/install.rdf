@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- $Id$ -->
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+  <Description about="urn:mozilla:install-manifest">
+    <em:id>{0e3fc079-afbb-4a00-87e5-9486062d0f9c}</em:id>
+    <em:type>2</em:type>
+    <em:bootstrap>true</em:bootstrap>
+    <em:name>Stylish Sync</em:name>
+    <em:version>0.1.4-dev</em:version>
+    <em:creator>Herrminator</em:creator><!-- stylishsync.t0s@gishpuppy.com -->
+    <em:contributor></em:contributor>
+    <em:description>Sync engine for Stylish.</em:description>
+    
+    <!-- stylish is required to be installed! -->
+
+    <!-- Overlays connot be used yet: https://bugzilla.mozilla.org/show_bug.cgi?id=675387 -->
+    <!-- em:optionsURL>chrome://gprivacy/content/options.xul</em:optionsURL -->
+    <!-- so we'll use: -->
+      <em:optionsType>2</em:optionsType>
+      <em:optionsURL>chrome://stylishsync/content/options.xul</em:optionsURL>
+      
+    <em:iconURL>chrome://stylishsync/skin/icon32.png</em:iconURL>  
+    <em:targetApplication>
+      <Description>
+        <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id> <!-- Firefox -->
+        <em:minVersion>10.0</em:minVersion>
+        <em:maxVersion>18.0a1</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+    <em:targetApplication>
+      <Description>
+        <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id> <!-- SeaMonkey -->
+        <em:minVersion>2.7</em:minVersion>
+        <em:maxVersion>2.15a1</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+    <em:updateURL>https://stylishsync.googlecode.com/svn/trunk/update.rdf</em:updateURL>
+  </Description>
+</RDF>
