@@ -13,6 +13,9 @@ In case somebody's wondering why I'm using HTML-markup: I want to copy this
 page to and from the AMO release notes.
 </wiki:comment>
 
+=== v0.1.4 ===
+  <li>Restore compatibility with Stylish 1.3</li>
+
 === v0.1.3 ===
  <li>Restore compatibility with Gecko >= 14 (Firefox 14 and SeaMonkey 2.10).
  <li>Address reviewers concerns about determining stack frames.</li>
