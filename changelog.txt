@@ -1,5 +1,10 @@
 Current svn: $Id$
 
+v0.1.4:
+
+* Upload to AMO
+* Bump version
+
 v0.1.4pre2:
 
 - Restore compatibility with Stylish 1.3
