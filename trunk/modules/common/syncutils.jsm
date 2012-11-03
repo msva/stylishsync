@@ -137,14 +137,28 @@ var SyncUtil = {
     return clazz;
   },
   
+  get engineManager() {
+    if (Weave.Engines)
+      return Weave.Engines;
+    return Weave.Service.engineManager;
+  },
+  
+  get clientsEngine() {
+    if (Weave.Clients)
+      return Weave.Clients;
+    return Weave.Service.clientsEngine;
+  },
+  
   // Maybe we can re-use this if we write another sync engine :)
   promptAndSync: function SU_promptAndSync(parent, engine, startPrompt, mergePrompt) {
+    let self = this;
+    
     if (Weave.Status.service != Weave.STATUS_OK) {
       Logging.debug("Sync is not active");
       return false;
     }
 
-    let eng = Weave.Engines.get(engine);
+    let eng = this.engineManager.get(engine);
     SyncUtil.assert(!!eng, "Engine '"+engine+"' not registered");
     
     let wasLocked = Weave.Service.locked;
@@ -197,7 +211,7 @@ var SyncUtil = {
             Logging.debug("Wiping server");
             Weave.Service.resetClient([eng.name]);
             Weave.Service.wipeServer([eng.name]);
-            Weave.Clients.sendCommand("wipeEngine", [eng.name]);
+            self.clientsEngine.sendCommand("wipeEngine", [eng.name]);
           }; break;
       }
     } finally {
