@@ -47,14 +47,14 @@ var StylishSync = {
   
   shutdown: function STS_shutdown(data, reason) {
     try {
-      let engine = Weave.Engines.get(this.SYNC_ENGINE);
+      let engine = SyncUtil.engineManager.get(this.SYNC_ENGINE);
       Logging.debug("unregistering '"+(engine?engine.Name:"<not found>")+"'");
     
       if (this.ui) this.ui.close();
 
       if (engine) { 
         engine.shutdown();
-        Weave.Engines.unregister(engine);
+        SyncUtil.engineManager.unregister(engine);
       }
 
       try { Services.obs  .removeObserver(this, "addon-options-displayed"); } catch (exc) {}
@@ -111,7 +111,7 @@ var StylishSync = {
 
     try {
 
-      Weave.Engines.register(StylishSyncEngine);
+      SyncUtil.engineManager.register(StylishSyncEngine);
       Logging.debug("Engine registered.");
         
       let backup = Services.prefs.getBoolPref("extensions.stylishsync.autobak");
@@ -135,7 +135,7 @@ var StylishSync = {
     let restore = doc.getElementById("stsrestore-btn");
     let name    = this.strings.get("stylishsync");
 
-    if (Weave.Engines.get(this.SYNC_ENGINE) && Weave.Status.service == Weave.STATUS_OK) {
+    if (SyncUtil.engineManager.get(this.SYNC_ENGINE) && Weave.Status.service == Weave.STATUS_OK) {
       // Show Reset Dialog
       reset.addEventListener("command", function STS_onResetButton() {
          StsUtil.promptAndSync(doc.defaultView, self.SYNC_ENGINE, "resetPrompt", "keepPrompt");
