@@ -124,7 +124,7 @@ var StylishBackup = {
 
       assert(Weave.Service.lock(), "Cannot lock sync service");
       
-      let eng = Weave.Engines.get("stylishsync");
+      let eng = SyncUtil.engineManager.get("stylishsync");
       assert(!!eng, "Engine not registered");
       
       eng.wipeClient();
@@ -171,8 +171,14 @@ var StylishBackup = {
     return this.FAILED;
   },
   
+  _dlld: function STB__dlld(sts) {
+    if (typeof gDownloadLastDir != "undefined")
+      return gDownloadLastDir;
+    return new DownloadLastDir(sts.window);
+  },
+  
   firstStart: function STB_firstStart(sts, doBackup) {
-    gDownloadLastDir.setFile("chrome://stylishsync", this.bakdir);
+    _dlld(sts).setFile("chrome://stylishsync", this.bakdir);
     if (!this.bakdir.exists())
       this.bakdir.create(1, 0x700);
     if (doBackup) {
@@ -206,14 +212,16 @@ var StylishBackup = {
     picker.appendFilter(name+" ("+patt+")", patt);
     picker.appendFilters(FP.filterAll);
 
-    picker.displayDirectory = gDownloadLastDir.getFile("chrome://stylishsync");
+    let dlld = this._dlld(sts);
+    
+    picker.displayDirectory = dlld.getFile("chrome://stylishsync");
     picker.defaultString    = restore ? "" : "stylishsync.sqlite";
     
     let ok = picker.show();
     
     if (ok == FP.returnCancel) return null;
     
-    gDownloadLastDir.setFile("chrome://stylishsync", picker.displayDirectory);
+    dlld.setFile("chrome://stylishsync", picker.displayDirectory);
     
     return picker.file;
   }

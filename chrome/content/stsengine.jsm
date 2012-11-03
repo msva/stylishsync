@@ -142,9 +142,9 @@ StylishSyncRecord.prototype = {
 
 Utils.deferGetSet(StylishSyncRecord, "cleartext", STYLE_PROPS.concat(["meta"]));
 
-function StylishSyncStore(name) {
+function StylishSyncStore(name, engine) {
   this.svc = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
-  Store.call(this, name);
+  Store.call(this, name, engine);
 }
 
 StylishSyncStore.prototype = {
@@ -228,8 +228,8 @@ StylishSyncStore.prototype = {
 
 StylishSyncStore   = StsUtil.errorLoggedClass(StylishSyncStore);
 
-function StylishSyncTracker(name) {
-  Tracker.call(this, name);
+function StylishSyncTracker(name, engine) {
+  Tracker.call(this, name, engine);
   // Because we're in a bootstrapped addon, we won't get
   // weave:engine:start-tracking at first, but maybe on a sync start-over
   // so start tracking immediately and 
@@ -301,9 +301,9 @@ StylishSyncTracker.prototype = {
 
 StylishSyncTracker = StsUtil.errorLoggedClass(StylishSyncTracker);
 
-function StylishSyncEngine() {
+function StylishSyncEngine(service) {
   try {
-    Weave.SyncEngine.call(this, "StylishSync");
+    SyncEngine.call(this, "StylishSync", service);
     this.svc     = Components.classes["@userstyles.org/style;1"].getService(Components.interfaces.stylishStyle);
     this.strings = new SyncStringBundle(this.name);
     // HACK ALERT: this should be deferred value
@@ -315,7 +315,7 @@ function StylishSyncEngine() {
 }
 
 StylishSyncEngine.prototype = {
-  __proto__:   Weave.SyncEngine.prototype,
+  __proto__:   SyncEngine.prototype,
   _recordObj:  StylishSyncRecord,
   _storeObj:   StylishSyncStore,
   _trackerObj: StylishSyncTracker,
