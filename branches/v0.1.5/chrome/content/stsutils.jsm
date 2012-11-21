@@ -178,7 +178,7 @@ var StylishBackup = {
   },
   
   firstStart: function STB_firstStart(sts, doBackup) {
-    _dlld(sts).setFile("chrome://stylishsync", this.bakdir);
+    this._dlld(sts).setFile("chrome://stylishsync", this.bakdir);
     if (!this.bakdir.exists())
       this.bakdir.create(1, 0x700);
     if (doBackup) {
