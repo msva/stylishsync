@@ -15,6 +15,7 @@ page to and from the AMO release notes.
 
 === v0.1.5 ===
   <li>Restore compatibility with Gecko >= 19<li>
+  <li>Hotfix typo (only affects new installations)</li>
 
 === v0.1.4 ===
   <li>Restore compatibility with Stylish 1.3</li>
