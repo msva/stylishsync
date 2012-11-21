@@ -1,5 +1,15 @@
 Current svn: $Id$
 
+v0.1.5:
+
+* Upload to AMO
+* Bump version
+
+v0.1.5pre1:
+
+* Restore compatibility with Gecko >= 19
+* Unify access to Weave engine manager and clients engine for Gecko >= 19
+
 v0.1.4:
 
 * Upload to AMO
