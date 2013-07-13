@@ -1,5 +1,13 @@
 Current svn: $Id$
 
+v0.1.6:
+
+- Fix incompatibility with Gecko 19+ (DownloadLastDir)
+
+v0.1.5.1:
+
+* Hotfix typo (only affects new installations)
+
 v0.1.5:
 
 * Upload to AMO
