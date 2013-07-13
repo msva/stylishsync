@@ -174,11 +174,15 @@ var StylishBackup = {
   _dlld: function STB__dlld(sts) {
     if (typeof gDownloadLastDir != "undefined")
       return gDownloadLastDir;
+    if (!sts.window)
+      return null;
     return new DownloadLastDir(sts.window);
   },
   
   firstStart: function STB_firstStart(sts, doBackup) {
-    this._dlld(sts).setFile("chrome://stylishsync", this.bakdir);
+    let dlld = this._dlld(sts);
+    if (dlld) dlld.setFile("chrome://stylishsync", this.bakdir);
+
     if (!this.bakdir.exists())
       this.bakdir.create(1, 0x700);
     if (doBackup) {
@@ -214,14 +218,14 @@ var StylishBackup = {
 
     let dlld = this._dlld(sts);
     
-    picker.displayDirectory = dlld.getFile("chrome://stylishsync");
+    if (dlld) picker.displayDirectory = dlld.getFile("chrome://stylishsync");
     picker.defaultString    = restore ? "" : "stylishsync.sqlite";
     
     let ok = picker.show();
     
     if (ok == FP.returnCancel) return null;
     
-    dlld.setFile("chrome://stylishsync", picker.displayDirectory);
+    if (dlld) dlld.setFile("chrome://stylishsync", picker.displayDirectory);
     
     return picker.file;
   }
