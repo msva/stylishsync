@@ -1,5 +1,10 @@
 Current svn: $Id$
 
+v0.1.7:
+
+- Restore compatibility with Stylish > 1.4.2 (issue 8)
+- Fix access rights on backup folder (issue 6)
+
 v0.1.6:
 
 - Fix incompatibility with Gecko 19+ (DownloadLastDir)
