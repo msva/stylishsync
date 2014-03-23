@@ -74,7 +74,7 @@ var StylishBackup = {
         // let dbfile = data.getFile();
         let dbfile = this.getStylishDB();
 
-        if (!file.parent.exists())  file.parent.create(1, 0x700);
+        if (!file.parent.exists())  file.parent.create(1, 0x1C0 /* 0700 */);
         if (file.exists())          file.remove(false);
 
         Services.storage.backupDatabaseFile(dbfile, file.leafName, file.parent);
