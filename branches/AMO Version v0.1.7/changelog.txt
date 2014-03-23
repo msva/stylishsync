@@ -1,0 +1,99 @@
+Current svn: $Id$
+
+v0.1.7:
+
+- Restore compatibility with Stylish > 1.4.2 (issue 8)
+- Fix access rights on backup folder (issue 6)
+
+v0.1.6:
+
+- Fix incompatibility with Gecko 19+ (DownloadLastDir)
+
+v0.1.5.1:
+
+* Hotfix typo (only affects new installations)
+
+v0.1.5:
+
+* Upload to AMO
+* Bump version
+
+v0.1.5pre1:
+
+* Restore compatibility with Gecko >= 19
+* Unify access to Weave engine manager and clients engine for Gecko >= 19
+
+v0.1.4:
+
+* Upload to AMO
+* Bump version
+
+v0.1.4pre2:
+
+- Restore compatibility with Stylish 1.3
+
+v0.1.4pre1:
+
+* Use jsshell from Gecko 15 for syntax check
+
+v0.1.3:
+
+* Upload to AMO
+* Bump version
+
+v0.1.3pre3:
+
+* Use stack from Error-class instead of throwing an exception in Logging
+
+v0.1.3pre2:
+
+- Use services-common/async.js for Gecko >= 14 and make it available in SyncUtils
+
+v0.1.3pre1:
+
+- Bump version to push developer chemspill fix
+
+
+v0.1.2:
+
++ Add preferences to standard sync UI
++ Catch sync errors in promptAndSync
+* Call Weave service functions _after_ unlocking the service in promptAndSync
+* Keep version numbers in 'sync' with reqpolsync
+- Fix DB-file access in Gecko 14 after landing of bug 682360
+- Check for sync service OK before prompting
+- Styles sometimes didn't register after sync or restore
+- Work around what seems to be bug in sync's decrypt test
+- Fix a type that caused manual reset to fail
+
+v0.1.1pre1:
+
++ Add help button to options
+- Copy-paste typo in stsutils.jsm
+* Factor out common sync utilities / logging / etc
+
+
+v0.1.0:
+
+* Upload to AMO
+* Bump version
+
+v0.1.0pre2:
+
++ Implement backup / restore
++ Add option to reset sync
++ Add option to sync more stylish settings
++ Ask for sync method on first start 
++ Set default backup directory on migration from v0.0.2
++ Make developer release available from google code
++ Mark duplicates with a tag
++ Wrap main entry points in try / catch / log / rethrow
+* Use Weaves sendCommand to wipe other clients
+* Refactor engine to its own module
+* Make engine name symbolic
+* Change the MIME-type of xpi in trunk to application/x-xpinstall.xpi
+- Lock sync service on first start
+- Fix duplicate meta entries on restore
+- Fix client reset
+- Lock sync service while reset dialog is open
+- Eliminate more anonymous functions
