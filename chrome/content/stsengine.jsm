@@ -33,7 +33,7 @@ function dbgFmt(obj) {
 
 const STYLE_PROPS = [
   "url",  "idUrl",   "updateUrl", "md5Url", "name",
-  "code", "enabled", "originalCode"
+  "code", "enabled", "originalCode", "originalMd5"
 ];
 
 const STYLE_META = [ "url", "url-prefix", "domain", "regexp", "type", "tag" ];
@@ -77,7 +77,9 @@ function StyleWrapper(guid, styleobj, mode) {
   if (!this.style) { // empty/deleted
     this.style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
     this.style.mode = 0; // assume we've got all values
-    if (typeof this.style.applyBackgroundUpdates  != "undefined") // Stylish >= v1.3
+    if (typeof this.style.originalMd5  != "undefined") // Stylish >= v1.4.2
+      this.style.init(null, null, null, null, null, "", false, null, null, null);
+    else if (typeof this.style.applyBackgroundUpdates  != "undefined") // Stylish >= v1.3
       this.style.init(null, null, null, null, null, "", false, null, null);
     else
       this.style.init(null, null, null, null, null, "", false, null);

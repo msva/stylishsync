@@ -145,7 +145,12 @@ var StylishBackup = {
           lastId = row.id;
           style = Components.classes["@userstyles.org/style;1"].createInstance(Components.interfaces.stylishStyle);
           style.mode = StylishConst.STYLISH_MODE_SYNCING | stylish.REGISTER_STYLE_ON_LOAD | stylish.REGISTER_STYLE_ON_CHANGE;
-          if (typeof style.applyBackgroundUpdates  != "undefined") // Stylish >= v1.3
+          if (typeof style.originalMd5  != "undefined") // Stylish >= v1.4.2
+            style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
+                       row.name, row.code,  row.enabled,   row.originalCode,
+                       row.originalMd5 || null,
+                       row.applyBackgroundUpdates || null); 
+          else if (typeof style.applyBackgroundUpdates  != "undefined") // Stylish >= v1.3
             style.init(row.url,  row.idUrl, row.updateUrl, row.md5Url,
                        row.name, row.code,  row.enabled,   row.originalCode,
                        row.applyBackgroundUpdates || null); 
