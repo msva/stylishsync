@@ -1,0 +1,19 @@
+<!-- Please @change this line to match your options.xul file --> 
+<!ENTITY stylishsync         "Stylish Sync">
+<!ENTITY stsenabled.label    "Aktiviert">
+<!ENTITY stsenabled.tip      "Deaktiveren löscht die Daten auf dem Server!">
+<!ENTITY stsimmediate.label  "Sofort synchronisieren">
+<!ENTITY stsimmediate.tip    "Nach jeder Stil-Änderung sofort synchronisieren">
+<!ENTITY stsdebug.label      "Debug-Ausgabe auf Fehlerkonsole">
+<!ENTITY stsdebug.tip        "Die Fehlerkonsole muss in Firefox aktiviert sein (erfordert Neustart)">
+<!ENTITY stsmanage.label     "&stylishsync; verwalten">
+<!ENTITY stsresetbtn.label   "Zurücksetzen...">
+<!ENTITY stsbackupbtn.label  "Stile sichern...">
+<!ENTITY stsrestorebtn.label "Stile wiederherstellen...">
+<!ENTITY stsautobak.label    "Automatisch sichern">
+<!ENTITY stsautobak.tip      "Stile werden im Profil-Ordner gesichert">
+<!ENTITY stsstylish.label    "Stylish-Einstellungen synchronisieren">
+<!ENTITY stsstylish.tip      "Einige Einstellungen von Stylish selbst werden mitsynchronisiert">
+<!ENTITY stssupport.label    "Support">
+<!ENTITY support.url         "https://code.google.com/p/stylishsync/wiki/README#Options">
+<!ENTITY support.urltext     "Online Hilfe (Englisch)">
